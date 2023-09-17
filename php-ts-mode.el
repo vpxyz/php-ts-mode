@@ -578,7 +578,7 @@ Return nil if there is no name or if NODE is not a variable_name node."
 
 ;;; Defun navigation
 
-(defun php-ts-mode-indent-defun ()
+(defun php-ts-mode--indent-defun ()
   "Indent the current top-level declaration syntactically.
 
 `treesit-defun-type-regexp' defines what constructs to indent."
@@ -667,7 +667,7 @@ Ie, NODE is not nested."
 (defvar-keymap php-ts-mode-map
   :doc "Keymap for the PHP language with tree-sitter"
   :parent prog-mode-map
-  "C-c C-q" #'php-ts-mode-indent-defun)
+  "C-c C-q" #'php-ts-mode--indent-defun)
 
 ;;;###autoload
 ;; TODO: ste due funzioni vanno fuse
@@ -766,8 +766,9 @@ Ie, NODE is not nested."
                 ( assignment constant escape-sequence base-clause literal function-name variable-name)
                 ( argument bracket delimiter error operator property attribute)))
 
-  ;; TODO: php è  praticamente ok al netto dei problemi di treesit-php-mode, ci sono delle regole
-  ;; di javascript che alterano il comportamento
+  ;; FIXME: php is pretty ok net of treesit-php-mode problems, however there
+  ;; are rules from the embedded languages that alter its behavior, dammit!
+  
   ;; Embed html, if possible
   (when (not php-ts-mode-disable-inject)
     (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
