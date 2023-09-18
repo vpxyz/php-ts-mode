@@ -446,9 +446,8 @@ See https://www.php.net/manual/en/language.constants.magic.php")
 
    :language 'php
    :feature 'attribute
-   '((attribute_list (_) @font-lock-constant-face)
-     (((attribute (_) @attribute_name) @font-lock-preprocessor-face) (:match "Deprecated" @attribute_name))
-     (attribute (_)) @font-lock-constant-face)
+   '((((attribute (_) @attribute_name) @font-lock-preprocessor-face) (:match "Deprecated" @attribute_name))
+     (attribute_group (attribute (name) @font-lock-constant-face)))
 
    ;;The parentheses must stand after the attribute, because the attribute list starts with '#['
    :language 'php
