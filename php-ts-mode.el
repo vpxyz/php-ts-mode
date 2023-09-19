@@ -381,6 +381,7 @@ See https://www.php.net/manual/en/language.constants.magic.php")
       name: (_) @font-lock-function-name-face)
      (method_declaration
       name: (_) @font-lock-function-name-face)
+     ("=>") @font-lock-keyword-face
      ;; (object_creation_expression
      ;;  [(name) (qualified_name)] @font-lock-type-face)
      (object_creation_expression
