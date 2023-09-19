@@ -774,29 +774,37 @@ Ie, NODE is not nested."
 		      css-ts-parser (treesit-parser-create 'css)
 		      javascript-ts-parser (treesit-parser-create 'javascript))
 	  
-	  ;; FIXME: what is the right combination of :local to have one and
-	  ;; only one parser on the region selected by the query?
+	  ;; workaround for treesitter bug, see
+	  ;; https://lists.gnu.org/archive/html/emacs-devel/2023-09/msg01020.html
+	  (defun test-php--clean-up-parser-range (&rest _)
+	    (dolist (parser (mapcan (lambda (lang)
+				      (treesit-parser-list nil lang))
+				    '(html css javascript)))
+	      (when (null (treesit-parser-included-ranges parser))
+		(treesit-parser-set-included-ranges
+		 parser `((,(point-min) . ,(point-min)))))))
+	  
 	  (setq-local treesit-range-settings
 		      (treesit-range-rules
 		       :embed 'html
 		       :host 'php
-		       ;;:local t
 		       '((program (text) @cap)
 			 (text_interpolation (text) @cap))
 
 		       :embed 'javascript
 		       :host 'html
-		       ;;:local t
 		       '((script_element
 			  (start_tag (tag_name))
 			  (raw_text) @cap))
 
 		       :embed 'css
 		       :host 'html
-		       ;;:local t
 		       '((style_element
 			  (start_tag (tag_name))
-			  (raw_text) @cap))))
+			  (raw_text) @cap))
+
+		       ;; workaround for a treesitter bug
+		      #'test-php--clean-up-parser-range))
 	  
 	  (setq-local treesit-font-lock-settings
 		      (append treesit-font-lock-settings
