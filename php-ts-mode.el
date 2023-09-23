@@ -369,6 +369,7 @@ See https://www.php.net/manual/en/language.constants.magic.php")
      ;; Highlights identifiers in declarations.
      (class_declaration
       name: (_) @font-lock-type-face)
+     (class_interface_clause (name) @font-lock-type-face)
      (interface_declaration
       name: (_) @font-lock-type-face)
      (trait_declaration
