@@ -805,7 +805,8 @@ Ie, NODE is not nested."
 			  (raw_text) @cap))
 
 		       ;; workaround for a treesitter bug
-		      #'test-php--clean-up-parser-range))
+		       ;;#'test-php--clean-up-parser-range
+		       ))
 	  
 	  (setq-local treesit-font-lock-settings
 		      (append treesit-font-lock-settings
