@@ -292,14 +292,6 @@ NODE should be a labeled_statement."
     ">=" "<=>" "<<" ">>" "+" "-" "." "*" "**" "/" "%")
   "PHP operators for tree-sitter font-locking.")
 
-(defvar php-ts-mode--magic-constants
-  (rx string-start
-      (or "__LINE__" "__FILE__" "__DIR__" "__FUNCTION__" "__CLASS__"
-	  "__TRAIT__" "__METHOD__" "__NAMESPACE__" "PHP_EOL")
-      string-end)
-  "Magical predefined constants that is expanded at compile time.
-See https://www.php.net/manual/en/language.constants.magic.php")
-
 (defun php-ts-mode--font-lock-settings ()
   "Tree-sitter font-lock settings."
   (treesit-font-lock-rules
@@ -320,8 +312,10 @@ See https://www.php.net/manual/en/language.constants.magic.php")
      (float) @font-lock-constant-face
      (integer) @font-lock-constant-face
      (null) @font-lock-constant-face
+     ((name) @font-lock-constant-face
+      (:match "^_?[A-Z][A-Z%d_]*$" @font-lock-constant-face))
      ((name) @font-lock-builtin-face
-      (:match "__[A-Z]*__" @font-lock-builtin-face))
+      (:match "^__[A-Z]*__" @font-lock-builtin-face))
      (const_declaration
       (const_element (name) @font-lock-constant-face)))
 
@@ -406,7 +400,7 @@ See https://www.php.net/manual/en/language.constants.magic.php")
       scope: (_) @font-lock-constant-face)
      (member_call_expression
       name: (_) @font-lock-function-name-face)
-     (class_constant_access_expression) @font-lock-constant-face
+     (class_constant_access_expression (name) @font-lock-constant-face)
      (nullsafe_member_call_expression
       name: (_) @font-lock-constant-face))
 
