@@ -127,8 +127,8 @@ MODE can be `pear', `default', `psr2', `drupal', `wordpress', `symfony2'."
              ('pear (alist-get 'pear (php-ts-mode--indent-styles)))
              ('drupal (alist-get 'drupal (php-ts-mode--indent-styles)))
              ('wordpress (alist-get 'wordpress (php-ts-mode--indent-styles)))
-	     ('symfony2 (alist-get 'symfony2 (php-ts-mode--indent-styles)))
-	     ('psr2 (alist-get 'psr2 (php-ts-mode--indent-styles)))))))
+             ('symfony2 (alist-get 'symfony2 (php-ts-mode--indent-styles)))
+             ('psr2 (alist-get 'psr2 (php-ts-mode--indent-styles)))))))
     `((php ,@style))))
 
 (defun php-ts-mode--prompt-for-style ()
@@ -168,7 +168,7 @@ To set the default indent style globally, use
 current buffer, the ranges covered by each parser"
   (let ((ranges))
     (if (not (treesit-parser-list))
-	(message "At least one parser must be initialized"))
+        (message "At least one parser must be initialized"))
     (cl-loop
      for parser in (treesit-parser-list)
      do (push (list parser (treesit-parser-included-ranges parser)) ranges)
@@ -209,14 +209,14 @@ current buffer, the ranges covered by each parser"
   "Indent rules supported by `php-ts-mode'."
   (let ((common
          `(;; Slam all top level nodes to the left margin
-	   ((parent-is "program") column-0 0)
-	   ((parent-is "php_tag") column-0 0)
-	   ((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
-	   ((node-is ")") parent-bol 0)
+           ((parent-is "program") column-0 0)
+           ((parent-is "php_tag") column-0 0)
+           ((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
+           ((node-is ")") parent-bol 0)
            ((node-is "]") parent-bol 0)
            ((node-is "else") parent-bol 0)
            ((node-is "case") parent-bol php-ts-mode-indent-offset)
-	   ((and (parent-is "comment") c-ts-common-looking-at-star)
+           ((and (parent-is "comment") c-ts-common-looking-at-star)
             c-ts-common-comment-start-after-first-star -1)
            (c-ts-common-comment-2nd-line-matcher
             c-ts-common-comment-2nd-line-anchor 1)
@@ -225,9 +225,9 @@ current buffer, the ranges covered by each parser"
            ((parent-is "function_definition") parent-bol 0)
            ((parent-is "conditional_expression") first-sibling 0)
            ((parent-is "assignment_expression") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "array_creation_expression") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "array_creation_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "parenthesized_expression") first-sibling 1)
-	   ((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
            ((parent-is "formal_parameters") first-sibling 1)
            ((parent-is "binary_expression") parent 0)
            ((query "(for_statement (assignment_expression left: (_)) @indent)") parent-bol 5)
@@ -235,25 +235,25 @@ current buffer, the ranges covered by each parser"
            ((query "(for_statement (update_expression (_)) @indent)") parent-bol 5)
            ((query "(function_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
            ((parent-is "function_call_expression") parent 0)
-	   ((node-is "}") standalone-parent 0)
+           ((node-is "}") standalone-parent 0)
            ((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
            ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
 
-	   ;; Statement in {} blocks.
-	   ((or (match nil "compound_statement" nil 1 1)
+           ;; Statement in {} blocks.
+           ((or (match nil "compound_statement" nil 1 1)
                 (match null "compound_statement"))
             standalone-parent php-ts-mode-indent-offset)
            ((parent-is "compound_statement") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
 
-	   ;; These rules are for cases where the body is bracketless.
-	   ((parent-is "case_statement") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "if_statement") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "else") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "for_statement")  parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "while_statement") parent-bol php-ts-mode-indent-offset)
-	   ((parent-is "do_statement") parent-bol php-ts-mode-indent-offset)
-	   )))
+           ;; These rules are for cases where the body is bracketless.
+           ((parent-is "case_statement") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "if_statement") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "else") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "for_statement")  parent-bol php-ts-mode-indent-offset)
+           ((parent-is "while_statement") parent-bol php-ts-mode-indent-offset)
+           ((parent-is "do_statement") parent-bol php-ts-mode-indent-offset)
+           )))
     `((default ,@common)
       (drupal ,@common)
       (psr2 ,@common)
@@ -274,7 +274,7 @@ NODE should be a labeled_statement."
 
 (defvar php-ts-mode-indent-block-type-regexp
   (rx (or "compound_statement"
-	  "declaration_list"
+          "declaration_list"
           "enum_declaration_list"))
   "Regexp matching types of block nodes (i.e., {} blocks).")
 
@@ -516,7 +516,7 @@ For NODE, OVERRIDE, START, END, and ARGS, see
                                           (or qualified-root
                                               identifier)))
                  ;; ("function_declarator" 'font-lock-function-name-face)
-		 ("function_definition" 'font-lock-function-name-face)
+                 ("function_definition" 'font-lock-function-name-face)
                  (_ 'font-lock-variable-name-face))))
     (treesit-fontify-with-override
      (treesit-node-start identifier) (treesit-node-end identifier)
@@ -535,7 +535,7 @@ For NODE, OVERRIDE, START, and END, see
   "Return the language at POINT assuming the point is within a HTML region."
   (let* ((node-at-point (treesit-node-at point 'html))
          (parent-node (treesit-node-parent node-at-point))
-	 (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
+         (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
     (cond
      ((string-equal "(style_element (raw_text))" node-query) 'css)
      ((string-equal "(script_element (raw_text))" node-query) 'javascript)
@@ -547,12 +547,12 @@ For NODE, OVERRIDE, START, and END, see
   "Return the language at POINT, used to determine which tree sitter parser to use."
   (let* ((node-at-point (treesit-node-at point 'php))
          (parent-node (treesit-node-parent node-at-point))
-	 (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
+         (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
     (if (not (member node-query '("(program (text))"
-				  "(text_interpolation (text))"
-				  ;; "(program (text_interpolation \"?>\"))"
-				  )))
-	'php
+                                  "(text_interpolation (text))"
+                                  ;; "(program (text_interpolation \"?>\"))"
+                                  )))
+        'php
       (php-ts-mode--html-language-at-point point))))
 
 (defun php-ts-mode--language-at-point-2 (point)
@@ -580,12 +580,12 @@ For NODE, OVERRIDE, START, and END, see
   "Return the defun name of NODE.
 Return nil if there is no name or if NODE is not a defun node."
   (when (member (treesit-node-type node) '(
-					   "class_declaration"
-					   "function_definition"
-					   "method_declaration"
-					   "trait_declaration"
-					   "interface_declaration"
-					   "enum_declaration"))
+                                           "class_declaration"
+                                           "function_definition"
+                                           "method_declaration"
+                                           "trait_declaration"
+                                           "interface_declaration"
+                                           "enum_declaration"))
     (treesit-node-text
      (treesit-node-child-by-field-name node "name") t)))
 
@@ -645,14 +645,14 @@ Derived from `c-ts-common-comment-setup'."
 Ie, NODE is not nested."
   (not (and (member (treesit-node-type node)
                     '("variable_name"
-		      "enum_declaration"
+                      "enum_declaration"
                       "union_declaration"
                       "declaration"))
             ;; If NODE's type is one of the above, make sure it is
             ;; top-level.
             (treesit-node-top-level
              node (rx (or "variable_name"
-			  "function_definition"
+                          "function_definition"
                           "enum_declaration"
                           "union_declaration"
                           "declaration"))))))
@@ -714,14 +714,14 @@ Ie, NODE is not nested."
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
               (regexp-opt '("comment"
-			    "variable_name"
-			    "function_definition"
+                            "variable_name"
+                            "function_definition"
                             "enum_declaration"
                             "class_declaration"
-			    "interface_declaration"
-			    "trait_declaration"
-			    "method_declaration"
-			    )))
+                            "interface_declaration"
+                            "trait_declaration"
+                            "method_declaration"
+                            )))
   
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
@@ -730,7 +730,7 @@ Ie, NODE is not nested."
               ;; of code, so skip that one, and include the other
               ;; statements.
               (regexp-opt '("statement"
-			    "declaration"
+                            "declaration"
                             "expression_statement"
                             "if_statement"
                             "switch_statement"
@@ -747,9 +747,14 @@ Ie, NODE is not nested."
                             "qualifier"
                             "type"
                             "assignment"
-			    "expression"
+                            "expression"
                             "literal"
                             "string")))
+
+  (setq-local treesit-thing-settings
+              `((php
+                 ))
+              )
   
   ;; Nodes like struct/enum/union_specifier can appear in
   ;; function_definitions, so we need to find the top-level node.
@@ -772,8 +777,8 @@ Ie, NODE is not nested."
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
               '(("Enum" "enum_declaration" nil nil)
-		("Variable" "variable_name" nil php-ts-mode--variable-name)
-		("Class" "class_declaration" nil nil)
+                ("Variable" "variable_name" nil php-ts-mode--variable-name)
+                ("Class" "class_declaration" nil nil)
                 ("Function" "function_definition" nil nil)
                 ("Method" "method_declaration" nil nil)))
 
@@ -783,8 +788,8 @@ Ie, NODE is not nested."
   (setq-local treesit-font-lock-feature-list
               '(( comment definition)
                 ( keyword string type name)
-                ( assignment constant escape-sequence base-clause literal function-name variable-name)
-                ( argument bracket delimiter error operator property attribute)))
+                ( attribute assignment constant escape-sequence base-clause literal function-name variable-name)
+                ( argument bracket delimiter error operator property)))
 
   ;; FIXME: php is pretty ok net of treesit-php-mode problems, however there
   ;; are rules from the embedded languages that alter its behavior, dammit!
@@ -792,87 +797,88 @@ Ie, NODE is not nested."
   ;; Embed html, if possible
   (when (not php-ts-mode-disable-inject)
     (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
-	(progn
-	  (setq-local html-ts-parser (treesit-parser-create 'html)
-		      css-ts-parser (treesit-parser-create 'css)
-		      javascript-ts-parser (treesit-parser-create 'javascript))
-	  
-	  ;; workaround for treesitter bug, see
-	  ;; https://lists.gnu.org/archive/html/emacs-devel/2023-09/msg01020.html
-	  (defun test-php--clean-up-parser-range (&rest _)
-	    (dolist (parser (mapcan (lambda (lang)
-				      (treesit-parser-list nil lang))
-				    '(html css javascript)))
-	      (when (null (treesit-parser-included-ranges parser))
-		(treesit-parser-set-included-ranges
-		 parser `((,(point-min) . ,(point-min)))))))
-	  
-	  (setq-local treesit-range-settings
-		      (treesit-range-rules
-		       :embed 'html
-		       :host 'php
-		       '((program (text) @cap)
-			 (text_interpolation (text) @cap))
+        (progn
+          (setq-local html-ts-parser (treesit-parser-create 'html)
+                      css-ts-parser (treesit-parser-create 'css)
+                      javascript-ts-parser (treesit-parser-create 'javascript))
+          
+          ;; workaround for treesitter bug, see
+          ;; https://lists.gnu.org/archive/html/emacs-devel/2023-09/msg01020.html
+          (defun test-php--clean-up-parser-range (&rest _)
+            (dolist (parser (mapcan (lambda (lang)
+                                      (treesit-parser-list nil lang))
+                                    '(html css javascript)))
+              (when (null (treesit-parser-included-ranges parser))
+                (treesit-parser-set-included-ranges
+                 parser `((,(point-min) . ,(point-min)))))))
+          
+          (setq-local treesit-range-settings
+                      (treesit-range-rules
+                       :embed 'html
+                       :host 'php
+                       '((program (text) @cap)
+                         (text_interpolation (text) @cap))
 
-		       :embed 'javascript
-		       :host 'html
-		       '((script_element
-			  (start_tag (tag_name))
-			  (raw_text) @cap))
+                       :embed 'javascript
+                       :host 'html
+                       '((script_element
+                          (start_tag (tag_name))
+                          (raw_text) @cap))
 
-		       :embed 'css
-		       :host 'html
-		       '((style_element
-			  (start_tag (tag_name))
-			  (raw_text) @cap))
+                       :embed 'css
+                       :host 'html
+                       '((style_element
+                          (start_tag (tag_name))
+                          (raw_text) @cap))
 
-		       ;; workaround for a treesitter bug
-		       ;;#'test-php--clean-up-parser-range
-		       ))
-	  
-	  (setq-local treesit-font-lock-settings
-		      (append treesit-font-lock-settings
-			      php-ts-mode--custom-html-font-lock-settings
-			      js--treesit-font-lock-settings
-			      css--treesit-settings))
-	  
-	  ;; come sopra per l'indentazione
-	  (setq-local treesit-simple-indent-rules
-		      (append treesit-simple-indent-rules
-			      html-ts-mode--indent-rules
-			      js--treesit-indent-rules
-			      css--treesit-indent-rules))
-	  
-	  (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point-2)
+                       ;; workaround for a treesitter bug
+                       ;;#'test-php--clean-up-parser-range
+                       ))
+          
+          (setq-local treesit-font-lock-settings
+                      (append treesit-font-lock-settings
+                              php-ts-mode--custom-html-font-lock-settings
+                              js--treesit-font-lock-settings
+                              css--treesit-settings))
+          
+          ;; come sopra per l'indentazione
+          (setq-local treesit-simple-indent-rules
+                      (append treesit-simple-indent-rules
+                              html-ts-mode--indent-rules
+                              js--treesit-indent-rules
+                              css--treesit-indent-rules))
+          
+          (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point-2)
 
-	  (setq-local treesit-font-lock-feature-list
-		      '(( comment definition
-			  ;; CSS
-			  query selector
-			  ;; HTML
-			  text)
-			( keyword string type name)
-			( assignment constant escape-sequence base-clause literal function-name variable-name
-			  ;; Javascript
-			  jsx number pattern string-interpolation
-			  )
-			( argument bracket delimiter error function operator property variable attribute))))
+          (setq-local treesit-font-lock-feature-list
+                      '(( comment definition
+                          ;; CSS
+                          query selector
+                          ;; HTML
+                          text)
+                        ( keyword string type name)
+                        ( attribute assignment constant escape-sequence base-clause literal function-name variable-name
+                          ;; Javascript
+                          jsx number pattern string-interpolation
+                          )
+                        ( argument bracket delimiter error function operator property variable))))
       (warn "Tree-sitter for Html (with javascript and css) isn't available. Html and/or Javascript and/or CSS syntax support isn't available to php-ts-mode")))
 
   (when (not php-ts-mode-disable-phpdoc-inject)
     (if (treesit-ready-p 'phpdoc)
-	(progn
-	  (setq-local phpdoc-ts-parser (treesit-parser-create 'phpdoc))
-	  (setq-local treesit-range-settings
-		      (append treesit-range-settings
-			      (treesit-range-rules
-			       :embed 'phpdoc
-			       :host 'php
-			       '((program (comment) @phpdoc)
-				 (declaration_list (comment) @phpdoc)))))
-	  (setq-local treesit-font-lock-settings
-		      (append treesit-font-lock-settings
-			      (php-ts-mode--phpdoc-font-lock-settings))))
+        (progn
+          (setq-local phpdoc-ts-parser (treesit-parser-create 'phpdoc))
+          (setq-local treesit-range-settings
+                      (append treesit-range-settings
+                              (treesit-range-rules
+                               :embed 'phpdoc
+                               :host 'php
+                               '((program (comment) @phpdoc)
+                                 (declaration_list (comment) @phpdoc)))))
+
+          (setq-local treesit-font-lock-settings
+                      (append treesit-font-lock-settings
+                              (php-ts-mode--phpdoc-font-lock-settings))))
       (warn "Tree-sitter for PHPDOC isn't available. Phpdoc syntax support isn't available to php-ts-mode")))
   
   ;; should be the last one
