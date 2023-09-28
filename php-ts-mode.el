@@ -108,6 +108,12 @@ follows the form of `treesit-simple-indent-rules'."
   :type '(boolean)
   :group 'php)
 
+(defcustom php-ts-mode-disable-phpdoc-inject nil
+  "If true disable phpdoc injection."
+  :version "30.1"
+  :type '(boolean)
+  :group 'php)
+
 ;;; Utils
 
 (defun php-ts-mode--get-indent-style ()
@@ -432,7 +438,7 @@ NODE should be a labeled_statement."
    :feature 'base-clause
    :override t
    '((base_clause (name) @font-lock-type-face)
-;;     (qualified_name (name) @font-lock-function-name-face)
+     ;;     (qualified_name (name) @font-lock-function-name-face)
      (qualified_name (name) @font-lock-constant-face))
 
    :language 'php
@@ -454,6 +460,27 @@ NODE should be a labeled_statement."
    :feature 'error
    :override t
    '((ERROR) @php-ts-mode--fontify-error)))
+
+(defun php-ts-mode--phpdoc-font-lock-settings ()
+  "Tree-sitter font-lock settings for phpdoc."
+  (treesit-font-lock-rules
+   :language 'phpdoc
+   :feature 'type
+   :override t ;; TODO: is required?
+   '((type_list
+      [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face))
+
+   :language 'phpdoc
+   :feature 'attribute
+   :override t
+   '((tag (tag_name) @font-lock-constant-face)
+     (tag ;; TODO: is usefull?
+      [(author_name) (version) (email_address)] @font-lock-doc-face))
+
+   :language 'phpdoc
+   :feature 'variable
+   :override t
+   '((variable_name (name) @font-lock-variable-name-face))))
 
 ;;; Font-lock helpers
 
@@ -637,7 +664,7 @@ Ie, NODE is not nested."
    :feature 'comment
    `((comment) @font-lock-comment-face
      (fragment (text) @font-lock-comment-face))
-     ;; (text) @font-lock-comment-face)
+   ;; (text) @font-lock-comment-face)
    :language 'html
    :override t
    :feature 'keyword
@@ -816,7 +843,7 @@ Ie, NODE is not nested."
 			      js--treesit-indent-rules
 			      css--treesit-indent-rules))
 	  
-	  (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point)
+	  (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point-2)
 
 	  (setq-local treesit-font-lock-feature-list
 		      '(( comment definition
@@ -829,9 +856,25 @@ Ie, NODE is not nested."
 			  ;; Javascript
 			  jsx number pattern string-interpolation
 			  )
-			( argument bracket delimiter error function operator property variable attribute)))
-	  )
+			( argument bracket delimiter error function operator property variable attribute))))
       (warn "Tree-sitter for Html (with javascript and css) isn't available. Html and/or Javascript and/or CSS syntax support isn't available to php-ts-mode")))
+
+  (when (not php-ts-mode-disable-phpdoc-inject)
+    (if (treesit-ready-p 'phpdoc)
+	(progn
+	  (setq-local phpdoc-ts-parser (treesit-parser-create 'phpdoc))
+	  (setq-local treesit-range-settings
+		      (append treesit-range-settings
+			      (treesit-range-rules
+			       :embed 'phpdoc
+			       :host 'php
+			       '((program (comment) @phpdoc)
+				 (declaration_list (comment) @phpdoc)))))
+	  (setq-local treesit-font-lock-settings
+		      (append treesit-font-lock-settings
+			      (php-ts-mode--phpdoc-font-lock-settings))))
+      (warn "Tree-sitter for PHPDOC isn't available. Phpdoc syntax support isn't available to php-ts-mode")))
+  
   ;; should be the last one
   (setq-local php-ts-parser (treesit-parser-create 'php))
   (treesit-font-lock-recompute-features)
