@@ -338,8 +338,20 @@ NODE should be a labeled_statement."
    `([,@php-ts-mode--operators] @font-lock-operator-face)
 
    :language 'php
+   :feature 'variable-name
+   :override t
+   `((variable_name (name) @font-lock-variable-name-face)
+     (dynamic_variable_name (name) @font-lock-variable-name-face)
+     (member_access_expression
+      name: (_) @font-lock-variable-name-face)
+     (scoped_property_access_expression
+      scope: (name) @font-lock-constant-face))
+   
+   :language 'php
    :feature 'string
-   '((encapsed_string) @font-lock-string-face
+   ;;:override t
+   `(("\"") @font-lock-string-face
+     (encapsed_string) @font-lock-string-face
      (string_value) @font-lock-string-face
      (string) @font-lock-string-face)
    
@@ -395,11 +407,10 @@ NODE should be a labeled_statement."
    
    :language 'php
    :feature  'function-name
+   :override t
    '(;;     (array_creation_expression "array") @font-lock-function-name-face
      (function_call_expression
       function: (_) @font-lock-function-call-face)
-     ;; (function_call_expression
-     ;;  function: (qualified_name (name)) @font-lock-function-name-face)
      (scoped_call_expression
       name: (_) @font-lock-function-name-face)
      (scoped_call_expression
@@ -410,24 +421,11 @@ NODE should be a labeled_statement."
      (nullsafe_member_call_expression
       name: (_) @font-lock-constant-face))
 
-   ;; TODO: bisogna aggiungere una regola per matchare i filtri delle funzioni tipo filter_*
    :language 'php
    :feature 'argument
    '((argument
       name: (_) @font-lock-constant-face))
-   
-   :language 'php
-   :feature 'variable-name
-   :override t
-   `((variable_name "$" (name) @font-lock-variable-name-face)
-     ((variable_name "$" (name) @font-lock-constant-face)
-      (:equal "this" @font-lock-constant-face))
-     (dynamic_variable_name (variable_name (name)) @font-lock-variable-name-face)
-     (member_access_expression
-      name: (_) @font-lock-variable-name-face)
-     (scoped_property_access_expression
-      scope: (name) @font-lock-constant-face))
-   
+
    :language 'php
    :feature 'escape-sequence
    :override t
@@ -438,7 +436,7 @@ NODE should be a labeled_statement."
    :feature 'base-clause
    :override t
    '((base_clause (name) @font-lock-type-face)
-     ;;     (qualified_name (name) @font-lock-function-name-face)
+     (use_as_clause (name) @font-lock-property-use-face)
      (qualified_name (name) @font-lock-constant-face))
 
    :language 'php
@@ -451,7 +449,6 @@ NODE should be a labeled_statement."
    '((((attribute (_) @attribute_name) @font-lock-preprocessor-face) (:match "Deprecated" @attribute_name))
      (attribute_group (attribute (name) @font-lock-constant-face)))
 
-   ;;The parentheses must stand after the attribute, because the attribute list starts with '#['
    :language 'php
    :feature 'bracket
    '((["(" ")" "[" "]" "{" "}"]) @font-lock-bracket-face)
@@ -473,14 +470,15 @@ NODE should be a labeled_statement."
    :language 'phpdoc
    :feature 'attribute
    :override t
-   '((tag (tag_name) @font-lock-constant-face)
+   '((tag_name) @font-lock-constant-face
      (tag ;; TODO: is usefull?
       [(author_name) (version) (email_address)] @font-lock-doc-face))
 
    :language 'phpdoc
    :feature 'variable
    :override t
-   '((variable_name (name) @font-lock-variable-name-face))))
+   '((variable_name (name) @font-lock-variable-name-face)))
+  )
 
 ;;; Font-lock helpers
 
@@ -772,7 +770,7 @@ Ie, NODE is not nested."
   
   ;; Electric
   (setq-local electric-indent-chars
-              (append "{}():;," electric-indent-chars))
+              (append "{}():;,<>/" electric-indent-chars))
 
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
@@ -784,16 +782,13 @@ Ie, NODE is not nested."
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
-  ;; (setq-local font-lock-defaults nil) ;; only for derived mode
+  ;;(setq-local font-lock-defaults nil) ;; only for derived mode
   (setq-local treesit-font-lock-feature-list
-              '(( comment definition)
+              '(( comment definition spell)
                 ( keyword string type name)
                 ( attribute assignment constant escape-sequence base-clause literal function-name variable-name)
                 ( argument bracket delimiter error operator property)))
 
-  ;; FIXME: php is pretty ok net of treesit-php-mode problems, however there
-  ;; are rules from the embedded languages that alter its behavior, dammit!
-  
   ;; Embed html, if possible
   (when (not php-ts-mode-disable-inject)
     (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
@@ -851,7 +846,7 @@ Ie, NODE is not nested."
           (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point-2)
 
           (setq-local treesit-font-lock-feature-list
-                      '(( comment definition
+                      '(( comment definition spell
                           ;; CSS
                           query selector
                           ;; HTML
@@ -864,6 +859,7 @@ Ie, NODE is not nested."
                         ( argument bracket delimiter error function operator property variable))))
       (warn "Tree-sitter for Html (with javascript and css) isn't available. Html and/or Javascript and/or CSS syntax support isn't available to php-ts-mode")))
 
+  ;; Embed phpdoc, if possible
   (when (not php-ts-mode-disable-phpdoc-inject)
     (if (treesit-ready-p 'phpdoc)
         (progn
@@ -873,8 +869,8 @@ Ie, NODE is not nested."
                               (treesit-range-rules
                                :embed 'phpdoc
                                :host 'php
-                               '((program (comment) @phpdoc)
-                                 (declaration_list (comment) @phpdoc)))))
+			       ;;:offset '(0 . -1)
+			       '((comment) @phpdoc))))
 
           (setq-local treesit-font-lock-settings
                       (append treesit-font-lock-settings
