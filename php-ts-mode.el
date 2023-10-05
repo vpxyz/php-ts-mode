@@ -749,28 +749,39 @@ Ie, NODE is not nested."
                             "literal"
                             "string")))
 
+  (setq-local treesit-defun-type-regexp
+              (regexp-opt '("function_definition"
+			   "class_declaration"
+			   "method_declaration"
+			   "interface_declaration"
+			   "enum_declaration"
+			   "trait_declaration"
+			   "use_declaration")))
+  
   (setq-local treesit-thing-settings
               `((php
-                 ))
-              )
+		 (sexp ,'(treesit-sexp-type-regexp))
+		 (sentence  ,'(treesit-sentence-type-regexp))
+		 (text ,'(regexp-opt '("comment"))))))
   
   ;; Nodes like struct/enum/union_specifier can appear in
   ;; function_definitions, so we need to find the top-level node.
   (setq-local treesit-defun-prefer-top-level t)
 
   ;; Indent.
+  ;; TODO: check php-mode.el:714
   (when (eq php-ts-mode-indent-style 'default)
-    (setq-local indent-tabs-mode t)) ;; TODO: check if needed for PHP
-
-  ;; Comment
-  (php-ts-mode-comment-setup)
-
+    (setq-local indent-tabs-mode nil)) ;; TODO: check if needed for PHP
+  
   (setq-local c-ts-common-indent-offset 'php-ts-mode-indent-offset)
   (setq-local treesit-simple-indent-rules (php-ts-mode--get-indent-style))
   
+  ;; Comment
+  (php-ts-mode-comment-setup)
+  
   ;; Electric
   (setq-local electric-indent-chars
-              (append "{}():;,<>/" electric-indent-chars))
+              (append "{}():;," electric-indent-chars))
 
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
@@ -778,11 +789,12 @@ Ie, NODE is not nested."
                 ("Variable" "variable_name" nil php-ts-mode--variable-name)
                 ("Class" "class_declaration" nil nil)
                 ("Function" "function_definition" nil nil)
-                ("Method" "method_declaration" nil nil)))
+                ("Method" "method_declaration" nil nil)
+		("Trait" "trait_declaration" nil nil)))
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
-  ;;(setq-local font-lock-defaults nil) ;; only for derived mode
+
   (setq-local treesit-font-lock-feature-list
               '(( comment definition spell)
                 ( keyword string type name)
