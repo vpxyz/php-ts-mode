@@ -574,6 +574,16 @@ For NODE, OVERRIDE, START, and END, see
 
 ;;; Imenu
 
+(defun php-ts-mode--parent-object (node)
+  "Return the name of the of the object that own NODE."
+  (treesit-parent-until
+   node
+   (lambda (n)
+     (member (treesit-node-type n)
+             '("class_declaration"
+	       "trait_declaration"
+	       "enum_declaration")))))
+
 (defun php-ts-mode--defun-name (node)
   "Return the defun name of NODE.
 Return nil if there is no name or if NODE is not a defun node."
@@ -584,8 +594,13 @@ Return nil if there is no name or if NODE is not a defun node."
                                            "trait_declaration"
                                            "interface_declaration"
                                            "enum_declaration"))
-    (treesit-node-text
-     (treesit-node-child-by-field-name node "name") t)))
+    (let ((parent-node-text
+	   (treesit-node-text
+	    (treesit-node-child-by-field-name (php-ts-mode--parent-object node) "name") t)))
+      (format
+       (if parent-node-text (concat parent-node-text "::%s") "%s")
+       (treesit-node-text
+	(treesit-node-child-by-field-name node "name") t)))))
 
 
 (defun php-ts-mode--variable-name (node)
@@ -593,6 +608,7 @@ Return nil if there is no name or if NODE is not a defun node."
 Return nil if there is no name or if NODE is not a variable_name node."
   (if (string-equal "variable_name" (treesit-node-type (treesit-node-parent node)))
       (treesit-node-text node t)))
+
 
 ;;; Defun navigation
 
@@ -785,12 +801,12 @@ Ie, NODE is not nested."
 
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
-              '(("Enum" "enum_declaration" nil nil)
-                ("Variable" "variable_name" nil php-ts-mode--variable-name)
-                ("Class" "class_declaration" nil nil)
-                ("Function" "function_definition" nil nil)
-                ("Method" "method_declaration" nil nil)
-		("Trait" "trait_declaration" nil nil)))
+              '(("Enum" "\\`enum_declaration\\'" nil nil)
+                ("Variable" "\\`variable_name\\'" nil php-ts-mode--variable-name)
+                ("Class" "\\`class_declaration\\'" nil nil)
+                ("Function" "\\`function_definition\\'" nil php-ts-mode--defun-name)
+                ("Method" "\\`method_declaration\\'" nil php-ts-mode--defun-name)
+		("Trait" "\\`trait_declaration\\'" nil nil)))
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
