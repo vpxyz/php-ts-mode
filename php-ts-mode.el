@@ -467,7 +467,7 @@ NODE should be a labeled_statement."
    :language 'php
    :feature 'attribute
    '((((attribute (_) @attribute_name) @font-lock-preprocessor-face)
-      (:match "Deprecated" @attribute_name))
+      (:equal "Deprecated" @attribute_name))
      (attribute_group (attribute (name) @font-lock-constant-face)))
 
    :language 'php
@@ -498,7 +498,14 @@ NODE should be a labeled_statement."
    :language 'phpdoc
    :feature 'variable
    :override t
-   '((variable_name (name) @font-lock-variable-name-face))))
+   '((variable_name (name) @font-lock-variable-name-face))
+
+   ;; TODO: disabled. The phpdoc parser does not gracefully handle unknown tags 
+   ;; :language 'phpdoc
+   ;; :feature 'error
+   ;; :override t
+   ;; `((ERROR) @php-ts-mode--fontify-error))
+  ))
 
 ;;; Font-lock helpers
 
@@ -907,7 +914,7 @@ Ie, NODE is not nested."
                                :embed 'phpdoc
                                :host 'php
 			       ;;:offset '(0 . -1)
-			       '((comment) @phpdoc)
+			       `(((comment) @phpdoc (:match "^/\\*\\*" @phpdoc)))
 			       )))
 
           (setq-local treesit-font-lock-settings
