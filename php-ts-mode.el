@@ -22,6 +22,23 @@
 
 ;;; Commentary:
 ;;
+;; This package provides `php-ts-mode' which is a major mode
+;; for editing PHP files with embedded html, javascript, css and phpdoc.
+;; Is use Tree Sitter to parse each of those languages, if parsers are available.
+;; phpdoc or html/javascript/css can be disabled if you don't need them.
+;;
+;; This package is compatible with an was tested against those tree-sitter grammars:
+;; * https://github.com/tree-sitter/tree-sitter-php
+;; * https://github.com/tree-sitter/tree-sitter-html
+;; * https://github.com/tree-sitter/tree-sitter-javascript
+;; * https://github.com/tree-sitter/tree-sitter-css
+;; * https://github.com/claytonrcarter/tree-sitter-phpdoc
+;;
+;; Features
+;; 
+;; * Indent
+;; * IMeny
+;; * Navigation
 
 ;;; Code:
 
@@ -327,7 +344,8 @@ NODE should be a labeled_statement."
 
    :language 'php
    :feature 'name
-   `((expression_statement (name) @font-lock-keyword-face (:equal "exit" @font-lock-keyword-face)))
+   `((expression_statement (name) @font-lock-keyword-face
+			   (:equal "exit" @font-lock-keyword-face)))
 
    :language 'php
    :feature 'delimiter
@@ -340,7 +358,8 @@ NODE should be a labeled_statement."
    :language 'php
    :feature 'variable-name
    :override t
-   `((variable_name (name) @font-lock-variable-name-face)
+   `(((name) @font-lock-keyword-face (:equal "this" @font-lock-keyword-face))
+     (variable_name (name) @font-lock-variable-name-face)
      (dynamic_variable_name (name) @font-lock-variable-name-face)
      (member_access_expression
       name: (_) @font-lock-variable-name-face)
@@ -446,7 +465,8 @@ NODE should be a labeled_statement."
 
    :language 'php
    :feature 'attribute
-   '((((attribute (_) @attribute_name) @font-lock-preprocessor-face) (:match "Deprecated" @attribute_name))
+   '((((attribute (_) @attribute_name) @font-lock-preprocessor-face)
+      (:match "Deprecated" @attribute_name))
      (attribute_group (attribute (name) @font-lock-constant-face)))
 
    :language 'php
@@ -477,8 +497,7 @@ NODE should be a labeled_statement."
    :language 'phpdoc
    :feature 'variable
    :override t
-   '((variable_name (name) @font-lock-variable-name-face)))
-  )
+   '((variable_name (name) @font-lock-variable-name-face))))
 
 ;;; Font-lock helpers
 
@@ -529,31 +548,8 @@ For NODE, OVERRIDE, START, and END, see
    'font-lock-warning-face
    override start end))
 
-(defun php-ts-mode--html-language-at-point (point)
-  "Return the language at POINT assuming the point is within a HTML region."
-  (let* ((node-at-point (treesit-node-at point 'html))
-         (parent-node (treesit-node-parent node-at-point))
-         (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
-    (cond
-     ((string-equal "(style_element (raw_text))" node-query) 'css)
-     ((string-equal "(script_element (raw_text))" node-query) 'javascript)
-     (t 'html))))
-
-
-;; FIXME: php-ts-mode--language-at-point or php-ts-mode--language-at-point-2 ? Which one is better ?
+;; TODO: this function was taken from elixir-ts-mode, why not put it in common?
 (defun php-ts-mode--language-at-point (point)
-  "Return the language at POINT, used to determine which tree sitter parser to use."
-  (let* ((node-at-point (treesit-node-at point 'php))
-         (parent-node (treesit-node-parent node-at-point))
-         (node-query (format "(%s (%s))" (treesit-node-type parent-node) (treesit-node-type node-at-point))))
-    (if (not (member node-query '("(program (text))"
-                                  "(text_interpolation (text))"
-                                  ;; "(program (text_interpolation \"?>\"))"
-                                  )))
-        'php
-      (php-ts-mode--html-language-at-point point))))
-
-(defun php-ts-mode--language-at-point-2 (point)
   "Return the language at POINT."
   (let* ((range nil)
          (language-in-range
@@ -582,32 +578,45 @@ For NODE, OVERRIDE, START, and END, see
      (member (treesit-node-type n)
              '("class_declaration"
 	       "trait_declaration"
-	       "enum_declaration")))))
+	       "interface_declaration"
+	       "enum_declaration"
+	       "function_definition"
+	       "method_declaration" ;; questo forse non serva
+	       )))))
+
+(defun php-ts-mode--defun-name-separator (node)
+  (pcase (treesit-node-type node)
+    ((or "function_definition" "method_declaration")
+     "()")
+    (_ "::")))
+
+;; TODO: dai un'occhiata a ruby-ts-mode e pytho-ts-mode (in particolare ruby-ts--imenu)
+(defun php-ts-mode--defun-object-name (node node-text)
+  (let* ((parent-node (php-ts-mode--parent-object node))
+	 (parent-node-text
+	 (treesit-node-text
+	  (treesit-node-child-by-field-name parent-node "name") t))
+	 (parent-node-separator (php-ts-mode--defun-name-separator parent-node)))
+    (if parent-node
+	(setq parent-node-text (php-ts-mode--defun-object-name parent-node (concat parent-node-text parent-node-separator node-text)))
+      (if parent-node-text (concat parent-node-text parent-node-separator node-text) node-text))))
 
 (defun php-ts-mode--defun-name (node)
   "Return the defun name of NODE.
 Return nil if there is no name or if NODE is not a defun node."
-  (when (member (treesit-node-type node) '(
-                                           "class_declaration"
-                                           "function_definition"
-                                           "method_declaration"
-                                           "trait_declaration"
-                                           "interface_declaration"
-                                           "enum_declaration"))
-    (let ((parent-node-text
-	   (treesit-node-text
-	    (treesit-node-child-by-field-name (php-ts-mode--parent-object node) "name") t)))
-      (format
-       (if parent-node-text (concat parent-node-text "::%s") "%s")
-       (treesit-node-text
-	(treesit-node-child-by-field-name node "name") t)))))
-
-
-(defun php-ts-mode--variable-name (node)
-  "Return the variable name of NODE.
-Return nil if there is no name or if NODE is not a variable_name node."
-  (if (string-equal "variable_name" (treesit-node-type (treesit-node-parent node)))
-      (treesit-node-text node t)))
+  (pcase (treesit-node-type node)
+    ((or "class_declaration"
+         "trait_declaration"
+         "interface_declaration"
+	 "enum_declaration"
+	 "function_definition")
+     (treesit-node-text (treesit-node-child-by-field-name node "name") t))
+    
+    ("method_declaration"
+     (php-ts-mode--defun-object-name node (treesit-node-text
+					   (treesit-node-child-by-field-name node "name") t)))
+    ("variable_name"
+     (php-ts-mode--defun-object-name node (treesit-node-text node t)))))
 
 
 ;;; Defun navigation
@@ -678,19 +687,28 @@ Ie, NODE is not nested."
    :feature 'comment
    `((comment) @font-lock-comment-face
      (fragment (text) @font-lock-comment-face))
+
    ;; (text) @font-lock-comment-face)
    :language 'html
    :override t
    :feature 'keyword
    `("doctype" @font-lock-keyword-face)
+
    :language 'html
    :override t
    :feature 'definition
    `((tag_name) @font-lock-function-name-face)
+
    :language 'html
    :override t
    :feature 'string
-   `((quoted_attribute_value) @font-lock-string-face)
+   `((quoted_attribute_value (attribute_value) @font-lock-string-face))
+   ;; `(((attribute
+   ;;     (attribute_name) @attribute_name
+   ;;     (quoted_attribute_value (attribute_value) @font-lock-string-face))
+   ;;    (:match "\\(?:href\\|src\\)" @attribute_name)))
+   ;;`((quoted_attribute_value) @font-lock-string-face)
+
    :language 'html
    :override t
    :feature 'property
@@ -712,19 +730,9 @@ Ie, NODE is not nested."
   :group 'php
   :syntax-table php-ts-mode--syntax-table
 
-  ;; (unless (treesit-ready-p 'html)
-  ;;   (warn "Tree-sitter for Html isn't available, it's required by php-ts-mode"))
-
-  ;; (unless (treesit-ready-p 'css)
-  ;;   (warn "Tree-sitter for CSS isn't available, it's required by php-ts-mode"))
-
-  ;; (unless (treesit-ready-p 'javascript)
-  ;;   (warn "Tree-sitter for Javascript isn't available, it's required by php-ts-mode"))
-  
   (unless (treesit-ready-p 'php)
     (error "Tree-sitter for PHP isn't available"))
 
-  
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
               (regexp-opt '("comment"
@@ -767,12 +775,12 @@ Ie, NODE is not nested."
 
   (setq-local treesit-defun-type-regexp
               (regexp-opt '("function_definition"
-			   "class_declaration"
-			   "method_declaration"
-			   "interface_declaration"
-			   "enum_declaration"
-			   "trait_declaration"
-			   "use_declaration")))
+			    "class_declaration"
+			    "method_declaration"
+			    "interface_declaration"
+			    "enum_declaration"
+			    "trait_declaration"
+			    "use_declaration")))
   
   (setq-local treesit-thing-settings
               `((php
@@ -802,10 +810,10 @@ Ie, NODE is not nested."
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
               '(("Enum" "\\`enum_declaration\\'" nil nil)
-                ("Variable" "\\`variable_name\\'" nil php-ts-mode--variable-name)
+		("Variable" "\\`variable_name\\'" nil nil)
                 ("Class" "\\`class_declaration\\'" nil nil)
-                ("Function" "\\`function_definition\\'" nil php-ts-mode--defun-name)
-                ("Method" "\\`method_declaration\\'" nil php-ts-mode--defun-name)
+		("Function" "\\`function_definition\\'" nil nil)
+                ("Method" "\\`method_declaration\\'" nil nil)
 		("Trait" "\\`trait_declaration\\'" nil nil)))
 
   ;; Font-lock.
@@ -871,7 +879,7 @@ Ie, NODE is not nested."
                               js--treesit-indent-rules
                               css--treesit-indent-rules))
           
-          (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point-2)
+          (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point)
 
           (setq-local treesit-font-lock-feature-list
                       '(( comment definition spell
@@ -898,7 +906,8 @@ Ie, NODE is not nested."
                                :embed 'phpdoc
                                :host 'php
 			       ;;:offset '(0 . -1)
-			       '((comment) @phpdoc))))
+			       '((comment) @phpdoc)
+			       )))
 
           (setq-local treesit-font-lock-settings
                       (append treesit-font-lock-settings
