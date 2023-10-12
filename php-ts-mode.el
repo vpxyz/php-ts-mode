@@ -340,7 +340,8 @@ NODE should be a labeled_statement."
      ((name) @font-lock-builtin-face
       (:match "^__[A-Z]*__" @font-lock-builtin-face))
      (const_declaration
-      (const_element (name) @font-lock-constant-face)))
+      (const_element (name) @font-lock-constant-face))
+     (relative_scope "self") @font-lock-builtin-face)
 
    :language 'php
    :feature 'name
