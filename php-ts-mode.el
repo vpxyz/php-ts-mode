@@ -595,19 +595,27 @@ For NODE, OVERRIDE, START, and END, see
 (defun php-ts-mode--defun-name-separator (node)
   (pcase (treesit-node-type node)
     ((or "function_definition" "method_declaration")
-     "()")
-    (_ "::")))
+     "()::")
+    (_ "\\")))
 
 ;; TODO: dai un'occhiata a ruby-ts-mode e pytho-ts-mode (in particolare ruby-ts--imenu)
 (defun php-ts-mode--defun-object-name (node node-text)
   (let* ((parent-node (php-ts-mode--parent-object node))
 	 (parent-node-text
-	 (treesit-node-text
-	  (treesit-node-child-by-field-name parent-node "name") t))
-	 (parent-node-separator (php-ts-mode--defun-name-separator parent-node)))
+	  (treesit-node-text
+	   (treesit-node-child-by-field-name parent-node "name") t))
+	 (parent-node-separator (php-ts-mode--defun-name-separator parent-node))
+	 (node-separator (php-ts-mode--defun-name-separator node))
+	 )
     (if parent-node
-	(setq parent-node-text (php-ts-mode--defun-object-name parent-node (concat parent-node-text parent-node-separator node-text)))
-      (if parent-node-text (concat parent-node-text parent-node-separator node-text) node-text))))
+	(progn
+	  (setq parent-node-text
+		(php-ts-mode--defun-object-name
+		 parent-node
+		 parent-node-text))
+	  (concat parent-node-text parent-node-separator node-text))
+      node-text
+      )))
 
 (defun php-ts-mode--defun-name (node)
   "Return the defun name of NODE.
