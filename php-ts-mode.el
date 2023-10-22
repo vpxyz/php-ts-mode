@@ -24,7 +24,7 @@
 ;;
 ;; This package provides `php-ts-mode' which is a major mode
 ;; for editing PHP files with embedded html, javascript, css and phpdoc.
-;; Is use Tree Sitter to parse each of those languages, if parsers are available.
+;; Tree Sitter is used to parse each of these languages, if parsers are available.
 ;; phpdoc or html/javascript/css can be disabled if you don't need them.
 ;;
 ;; This package is compatible with an was tested against those tree-sitter grammars:
@@ -39,6 +39,7 @@
 ;; * Indent
 ;; * IMeny
 ;; * Navigation
+;; * Which-function
 
 ;;; Code:
 
@@ -117,6 +118,7 @@ follows the form of `treesit-simple-indent-rules'."
                  (const :tag "Symfony2" symfony2)
                  (function :tag "A function for user customized style" ignore))
   :set #'php-ts-mode--indent-style-setter
+  :safe 'c-ts-indent-style-safep
   :group 'php)
 
 (defcustom php-ts-mode-disable-inject nil
@@ -228,7 +230,8 @@ current buffer, the ranges covered by each parser"
          `(;; Slam all top level nodes to the left margin
            ((parent-is "program") column-0 0)
            ((parent-is "php_tag") column-0 0)
-           ((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
+           ;;((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
+           ((node-is "}") parent-bol 0)	   
            ((node-is ")") parent-bol 0)
            ((node-is "]") parent-bol 0)
            ((node-is "else") parent-bol 0)
@@ -239,7 +242,9 @@ current buffer, the ranges covered by each parser"
             c-ts-common-comment-2nd-line-anchor 1)
            ((parent-is "comment") prev-adaptive-prefix 0)
 
-           ((parent-is "function_definition") parent-bol 0)
+	   ((parent-is "member_call_expression") parent php-ts-mode-indent-offset)
+	   ((parent-is "function_definition") parent-bol 0)
+	   ((parent-is "function_call_expression") first-sibling 0)
            ((parent-is "conditional_expression") first-sibling 0)
            ((parent-is "assignment_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "array_creation_expression") parent-bol php-ts-mode-indent-offset)
@@ -247,11 +252,11 @@ current buffer, the ranges covered by each parser"
            ((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
            ((parent-is "formal_parameters") first-sibling 1)
            ((parent-is "binary_expression") parent 0)
-           ((query "(for_statement (assignment_expression left: (_)) @indent)") parent-bol 5)
-           ((query "(for_statement (binary_expression left: (_)) @indent)") parent-bol 5)
-           ((query "(for_statement (update_expression (_)) @indent)") parent-bol 5)
+           ((query "(for_statement (assignment_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
+           ((query "(for_statement (binary_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
+           ((query "(for_statement (update_expression (_)) @indent)") parent-bol php-ts-mode-indent-offset)
            ((query "(function_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
-           ((parent-is "function_call_expression") parent 0)
+
            ((node-is "}") standalone-parent 0)
            ((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
            ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
@@ -264,6 +269,7 @@ current buffer, the ranges covered by each parser"
            ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
 
            ;; These rules are for cases where the body is bracketless.
+	   ((parent-is "switch_statement") parent-bol php-ts-mode-indent-offset)
            ((parent-is "case_statement") parent-bol php-ts-mode-indent-offset)
            ((parent-is "if_statement") parent-bol php-ts-mode-indent-offset)
            ((parent-is "else") parent-bol php-ts-mode-indent-offset)
@@ -311,8 +317,9 @@ NODE should be a labeled_statement."
 
 (defvar php-ts-mode--operators
   '("**=" "*=" "/=" "%=" "+=" "-=" ".=" "<<=" ">>=" "&=" "^=" "|="
-    "??=" "||" "&&" "|" "^" "&" "==" "!=" "<>" "===" "!==" "<" ">" "<="
-    ">=" "<=>" "<<" ">>" "+" "-" "." "*" "**" "/" "%")
+    "??"  "??=" "||" "&&" "|" "^" "&" "==" "!=" "<>" "===" "!==" "<"
+    ">" "<=" ">=" "<=>" "<<" ">>" "<<<" ">>>" "+" "-" "." "*" "**" "/"
+    "%" "->" "?->")
   "PHP operators for tree-sitter font-locking.")
 
 (defun php-ts-mode--font-lock-settings ()
@@ -605,8 +612,7 @@ For NODE, OVERRIDE, START, and END, see
 	  (treesit-node-text
 	   (treesit-node-child-by-field-name parent-node "name") t))
 	 (parent-node-separator (php-ts-mode--defun-name-separator parent-node))
-	 (node-separator (php-ts-mode--defun-name-separator node))
-	 )
+	 (node-separator (php-ts-mode--defun-name-separator node)))
     (if parent-node
 	(progn
 	  (setq parent-node-text
@@ -614,25 +620,25 @@ For NODE, OVERRIDE, START, and END, see
 		 parent-node
 		 parent-node-text))
 	  (concat parent-node-text parent-node-separator node-text))
-      node-text
-      )))
+      node-text)))
 
 (defun php-ts-mode--defun-name (node)
   "Return the defun name of NODE.
 Return nil if there is no name or if NODE is not a defun node."
-  (pcase (treesit-node-type node)
-    ((or "class_declaration"
-         "trait_declaration"
-         "interface_declaration"
-	 "enum_declaration"
-	 "function_definition")
-     (treesit-node-text (treesit-node-child-by-field-name node "name") t))
-    
-    ("method_declaration"
-     (php-ts-mode--defun-object-name node (treesit-node-text
-					   (treesit-node-child-by-field-name node "name") t)))
-    ("variable_name"
-     (php-ts-mode--defun-object-name node (treesit-node-text node t)))))
+  (let ((child (treesit-node-child-by-field-name node "name")))
+    (pcase (treesit-node-type node)
+      ((or "class_declaration"
+           "trait_declaration"
+           "interface_declaration"
+	   "enum_declaration"
+	   "function_definition")
+       (treesit-node-text child t))
+      
+      ("method_declaration"
+       (php-ts-mode--defun-object-name node (treesit-node-text child t)))
+      
+      ("variable_name"
+       (php-ts-mode--defun-object-name node (treesit-node-text node t))))))
 
 
 ;;; Defun navigation
@@ -751,15 +757,12 @@ Ie, NODE is not nested."
 
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
-              (regexp-opt '("comment"
-                            "variable_name"
-                            "function_definition"
-                            "enum_declaration"
-                            "class_declaration"
-                            "interface_declaration"
-                            "trait_declaration"
-                            "method_declaration"
-                            )))
+	      (regexp-opt '("function_definition"
+			    "method_declaration"
+			    "class_declaration"
+			    "interface_declaration"
+			    "trait_declaration"
+			    "enum_declaration")))
   
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
@@ -788,19 +791,12 @@ Ie, NODE is not nested."
                             "expression"
                             "literal"
                             "string")))
-
-  (setq-local treesit-defun-type-regexp
-              (regexp-opt '("function_definition"
-			    "class_declaration"
-			    "method_declaration"
-			    "interface_declaration"
-			    "enum_declaration"
-			    "trait_declaration"
-			    "use_declaration")))
   
   (setq-local treesit-thing-settings
               `((php
-		 (sexp ,'(treesit-sexp-type-regexp))
+		 (defun ,'(treesit-defun-type-regexp))
+		 ;;(sexp ,'(treesit-sexp-type-regexp))
+		 (sexp (not ,(rx (or "{" "}" "[" "]" "(" ")" ","))))
 		 (sentence  ,'(treesit-sentence-type-regexp))
 		 (text ,'(regexp-opt '("comment"))))))
   
@@ -815,6 +811,9 @@ Ie, NODE is not nested."
   
   (setq-local c-ts-common-indent-offset 'php-ts-mode-indent-offset)
   (setq-local treesit-simple-indent-rules (php-ts-mode--get-indent-style))
+  
+  ;; (when (not (eq php-ts-indent-style 'default))
+  ;;   (setq-local fill-column 78))
   
   ;; Comment
   (php-ts-mode-comment-setup)
@@ -868,12 +867,14 @@ Ie, NODE is not nested."
 
                        :embed 'javascript
                        :host 'html
+		       :offset '(1 . -1)
                        '((script_element
                           (start_tag (tag_name))
                           (raw_text) @cap))
 
                        :embed 'css
                        :host 'html
+		       :offset '(1 . -1)
                        '((style_element
                           (start_tag (tag_name))
                           (raw_text) @cap))
@@ -929,6 +930,13 @@ Ie, NODE is not nested."
                       (append treesit-font-lock-settings
                               (php-ts-mode--phpdoc-font-lock-settings))))
       (warn "Tree-sitter for PHPDOC isn't available. Phpdoc syntax support isn't available to php-ts-mode")))
+
+  ;; Which-function.
+  (setq-local which-func-functions (treesit-defun-at-point))
+  
+  ;; Align.
+  ;; TODO: it's usefull?
+  (setq-local align-indent-before-aligning t)
   
   ;; should be the last one
   (setq-local php-ts-parser (treesit-parser-create 'php))
