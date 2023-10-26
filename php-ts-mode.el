@@ -352,10 +352,13 @@ NODE should be a labeled_statement."
 
    :language 'php
    :feature 'name
-   `((expression_statement (name) @font-lock-keyword-face
+   `((goto_statement (name) @font-lock-constant-face)
+     (named_label_statement (name) @font-lock-constant-face)
+     (expression_statement (name) @font-lock-keyword-face
 			   (:equal "exit" @font-lock-keyword-face)))
 
    :language 'php
+   ;;:override t
    :feature 'delimiter
    `((["," ":" ";" "\\"]) @font-lock-delimiter-face)
    
@@ -563,7 +566,7 @@ For NODE, OVERRIDE, START, and END, see
    'font-lock-warning-face
    override start end))
 
-;; TODO: this function was taken from elixir-ts-mode, why not put it in common?
+;; TODO: this function was taken from elixir-ts-mode, why not put it in treesit.el ?
 (defun php-ts-mode--language-at-point (point)
   "Return the language at POINT."
   (let* ((range nil)
@@ -710,7 +713,6 @@ Ie, NODE is not nested."
    `((comment) @font-lock-comment-face
      (fragment (text) @font-lock-comment-face))
 
-   ;; (text) @font-lock-comment-face)
    :language 'html
    :override t
    :feature 'keyword
@@ -722,20 +724,16 @@ Ie, NODE is not nested."
    `((tag_name) @font-lock-function-name-face)
 
    :language 'html
-   :override t
+   :override 'keep
    :feature 'string
-   `((quoted_attribute_value (attribute_value) @font-lock-string-face))
-   ;; `(((attribute
-   ;;     (attribute_name) @attribute_name
-   ;;     (quoted_attribute_value (attribute_value) @font-lock-string-face))
-   ;;    (:match "\\(?:href\\|src\\)" @attribute_name)))
-   ;;`((quoted_attribute_value) @font-lock-string-face)
+   `((quoted_attribute_value) @font-lock-string-face)
 
    :language 'html
    :override t
    :feature 'property
    `((attribute_name) @font-lock-variable-name-face))
   "Tree-sitter font-lock settings for `php-html-ts-mode'.")
+
 ;;; Modes
 
 (defvar-keymap php-ts-mode-map
@@ -848,16 +846,6 @@ Ie, NODE is not nested."
                       css-ts-parser (treesit-parser-create 'css)
                       javascript-ts-parser (treesit-parser-create 'javascript))
           
-          ;; workaround for treesitter bug, see
-          ;; https://lists.gnu.org/archive/html/emacs-devel/2023-09/msg01020.html
-          (defun test-php--clean-up-parser-range (&rest _)
-            (dolist (parser (mapcan (lambda (lang)
-                                      (treesit-parser-list nil lang))
-                                    '(html css javascript)))
-              (when (null (treesit-parser-included-ranges parser))
-                (treesit-parser-set-included-ranges
-                 parser `((,(point-min) . ,(point-min)))))))
-          
           (setq-local treesit-range-settings
                       (treesit-range-rules
                        :embed 'html
@@ -877,11 +865,7 @@ Ie, NODE is not nested."
 		       :offset '(1 . -1)
                        '((style_element
                           (start_tag (tag_name))
-                          (raw_text) @cap))
-
-                       ;; workaround for a treesitter bug
-                       ;;#'test-php--clean-up-parser-range
-                       ))
+                          (raw_text) @cap))))
           
           (setq-local treesit-font-lock-settings
                       (append treesit-font-lock-settings
