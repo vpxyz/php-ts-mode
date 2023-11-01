@@ -64,6 +64,23 @@
 (declare-function treesit-parser-included-ranges "treesit.c")
 (declare-function treesit-parser-list "treesit.c")
 
+
+;;; Install treesitter language parsers
+(defvar php-ts-mode--language-source-alist
+  "Treesitter language parser alist required by php-ts-mode."
+  '((php . ("https://github.com/tree-sitter/tree-sitter-php"))
+    (html . ("https://github.com/tree-sitter/tree-sitter-html"))
+    (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
+    (css . ("https://github.com/tree-sitter/tree-sitter-css"))
+    (phpdoc . ("https://github.com/claytonrcarter/tree-sitter-phpdoc"))))
+
+(defun php-ts-mode-install-parser ()
+  "Install all the required treesitter parser."
+  (interactive)
+  (let ((treesit-language-source-alist php-ts-mode--language-source-alist))
+    (dolist (item php-ts-mode--language-source-alist)
+      (treesit-install-language-grammar (car item)))))
+
 ;;; Custom variables
 
 (defcustom php-ts-mode-indent-offset 4
@@ -882,7 +899,7 @@ Ie, NODE is not nested."
                           jsx number pattern string-interpolation
                           )
                         ( argument bracket delimiter error function operator property variable))))
-      (warn "Tree-sitter for Html (with javascript and css) isn't available. Html and/or Javascript and/or CSS syntax support isn't available to php-ts-mode")))
+      (warn "Tree-sitter for Html (with javascript and css) isn't available. Html and/or Javascript and/or CSS syntax support isn't available to php-ts-mode. You could run `php-ts-mode-install-parser' to install the required parsers.")))
 
   ;; Embed phpdoc, if possible
   (when (not php-ts-mode-disable-phpdoc-inject)
@@ -901,7 +918,7 @@ Ie, NODE is not nested."
           (setq-local treesit-font-lock-settings
                       (append treesit-font-lock-settings
                               (php-ts-mode--phpdoc-font-lock-settings))))
-      (warn "Tree-sitter for PHPDOC isn't available. Phpdoc syntax support isn't available to php-ts-mode")))
+      (warn "Tree-sitter for PHPDOC isn't available. Phpdoc syntax support isn't available to php-ts-mode.You could run `php-ts-mode-install-parser' to install the required parsers.")))
 
   ;; Which-function.
   (setq-local which-func-functions (treesit-defun-at-point))
