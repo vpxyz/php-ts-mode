@@ -597,7 +597,6 @@ For NODE, OVERRIDE, START, and END, see
      "()::")
     (_ "\\")))
 
-;; TODO: dai un'occhiata a ruby-ts-mode e pytho-ts-mode (in particolare ruby-ts--imenu)
 (defun php-ts-mode--defun-object-name (node node-text)
   (let* ((parent-node (php-ts-mode--parent-object node))
 	 (parent-node-text
