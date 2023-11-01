@@ -227,37 +227,52 @@ current buffer, the ranges covered by each parser"
 (defun php-ts-mode--indent-styles ()
   "Indent rules supported by `php-ts-mode'."
   (let ((common
-         `(;; Slam all top level nodes to the left margin
-           ((parent-is "program") column-0 0)
-           ((parent-is "php_tag") column-0 0)
-           ;;((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
-           ((node-is "}") parent-bol 0)	   
-           ((node-is ")") parent-bol 0)
-           ((node-is "]") parent-bol 0)
-           ((node-is "else") parent-bol 0)
+         `(((or (node-is "program")
+		(node-is "php_tag"))
+	    parent-bol 0)
+	   ;; column-0 0)
+           ;; ((parent-is "program") column-0 0)
+           ;; ((parent-is "php_tag") column-0 0)
+           ((query "(ERROR (ERROR)) @indent") column-0 0) ;; FIXME: it's useful?
+	   ((or (node-is "}")
+		(node-is ")")
+		(node-is "]")
+		(node-is "else"))
+	    parent-bol 0)
+	   ((node-is "}") standalone-parent 0)
            ((node-is "case") parent-bol php-ts-mode-indent-offset)
+	   ((node-is "default") parent-bol php-ts-mode-indent-offset)
            ((and (parent-is "comment") c-ts-common-looking-at-star)
             c-ts-common-comment-start-after-first-star -1)
            (c-ts-common-comment-2nd-line-matcher
             c-ts-common-comment-2nd-line-anchor 1)
            ((parent-is "comment") prev-adaptive-prefix 0)
 
-	   ((parent-is "member_call_expression") parent php-ts-mode-indent-offset)
+	   ;; ((parent-is "member_call_expression") parent php-ts-mode-indent-offset)
+	   ;;((parent-is "member_call_expression \"->\"") parent-bol 1)
+	   ;; TODO: invece che php-ts-mode-indent-offset meglio urase una funzione
+	   ;; che cerca il first-sibling e da questo scorrere fino a trovale -> e calcolare
+	   ;; quindi l'offset
+	   ((parent-is "member_call_expression") first-sibling php-ts-mode-indent-offset)
 	   ((parent-is "function_definition") parent-bol 0)
-	   ((parent-is "function_call_expression") first-sibling 0)
+	   ;;((parent-is "function_call_expression") first-sibling 0) ;; spostato nella parte specifiche per i linguaggi
            ((parent-is "conditional_expression") first-sibling 0)
            ((parent-is "assignment_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "array_creation_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "parenthesized_expression") first-sibling 1)
-           ((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "formal_parameters") first-sibling 1)
+           ;;((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
+	   ;; ((parent-is "arguments") parent-bol php-ts-mode-indent-offset)
+           ;; ((parent-is "formal_parameters") first-sibling 1)
+	   
+           ;; ((parent-is "formal_parameters") first-sibling 1)
            ((parent-is "binary_expression") parent 0)
            ((query "(for_statement (assignment_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
            ((query "(for_statement (binary_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
            ((query "(for_statement (update_expression (_)) @indent)") parent-bol php-ts-mode-indent-offset)
            ((query "(function_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
+	   ((query "(member_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
 
-           ((node-is "}") standalone-parent 0)
+           ;; ((node-is "}") standalone-parent 0)
            ((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
            ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
 
@@ -269,17 +284,29 @@ current buffer, the ranges covered by each parser"
            ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
 
            ;; These rules are for cases where the body is bracketless.
-	   ((parent-is "switch_statement") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "case_statement") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "if_statement") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "else") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "for_statement")  parent-bol php-ts-mode-indent-offset)
-           ((parent-is "while_statement") parent-bol php-ts-mode-indent-offset)
-           ((parent-is "do_statement") parent-bol php-ts-mode-indent-offset)
+	   ((or (parent-is "switch_statement")
+		(parent-is "case_statement")
+		(parent-is "if_statement")
+		(parent-is "else")
+		(parent-is "for_statement")
+		(parent-is "while_statement")
+		(parent-is "do_statement"))
+	    parent-bol php-ts-mode-indent-offset)
            )))
-    `((default ,@common)
+    `((default
+       ((or (parent-is "arguments")
+	     (parent-is "formal_parameters"))
+	 first-sibling 1)
+	((parent-is "function_call_expression") first-sibling 0)
+       ,@common)
       (drupal ,@common)
-      (psr2 ,@common)
+      (psr2
+       ((node-is ")") parent-bol 0)
+       ((or (parent-is "arguments")
+	   (parent-is "formal_parameters"))
+       parent-bol php-ts-mode-indent-offset)
+       ((parent-is "function_call_expression") parent-bol php-ts-mode-indent-offset)
+      ,@common)
       (pear ,@common)
       (wordpress ,@common))))
 
@@ -515,47 +542,9 @@ NODE should be a labeled_statement."
    ;; :feature 'error
    ;; :override t
    ;; `((ERROR) @php-ts-mode--fontify-error))
-  ))
+   ))
 
 ;;; Font-lock helpers
-
-(defun php-ts-mode--declarator-identifier (node)
-  "Return the identifier of the declarator node NODE."
-  (pcase (treesit-node-type node)
-    ;; Recurse.
-    ((or "attributed_declarator" "parenthesized_declarator")
-     (php-ts-mode--declarator-identifier (treesit-node-child node 0 t)))
-    ((or "pointer_declarator" "reference_declarator")
-     (php-ts-mode--declarator-identifier (treesit-node-child node -1)))
-    ((or "function_declarator" "array_declarator" "init_declarator")
-     (php-ts-mode--declarator-identifier
-      (treesit-node-child-by-field-name node "declarator")))
-    ("qualified_identifier"
-     (php-ts-mode--declarator-identifier
-      (treesit-node-child-by-field-name node "name")))
-    ;; Terminal case.
-    ((or "identifier" "field_identifier")
-     node)))
-
-(defun php-ts-mode--fontify-declarator (node override start end &rest _args)
-  "Fontify a declarator (whatever under the \"declarator\" field).
-For NODE, OVERRIDE, START, END, and ARGS, see
-`treesit-font-lock-rules'."
-  (let* ((identifier (php-ts-mode--declarator-identifier node))
-         (qualified-root
-          (treesit-parent-while (treesit-node-parent identifier)
-                                (lambda (node)
-                                  (equal (treesit-node-type node)
-                                         "qualified_identifier"))))
-         (face (pcase (treesit-node-type (treesit-node-parent
-                                          (or qualified-root
-                                              identifier)))
-                 ;; ("function_declarator" 'font-lock-function-name-face)
-                 ("function_definition" 'font-lock-function-name-face)
-                 (_ 'font-lock-variable-name-face))))
-    (treesit-fontify-with-override
-     (treesit-node-start identifier) (treesit-node-end identifier)
-     face override start end)))
 
 (defun php-ts-mode--fontify-error (node override start end &rest _)
   "Fontify the error nodes.
