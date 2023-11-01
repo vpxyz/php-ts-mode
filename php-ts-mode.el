@@ -71,7 +71,7 @@
   :version "30.1"
   :type 'integer
   :safe 'integerp
-  :group 'php)
+  :group 'php-ts)
 
 (defun php-ts-mode--indent-style-setter (sym val)
   "Custom setter for `php-ts-mode-set-style'.
@@ -119,19 +119,19 @@ follows the form of `treesit-simple-indent-rules'."
                  (function :tag "A function for user customized style" ignore))
   :set #'php-ts-mode--indent-style-setter
   :safe 'c-ts-indent-style-safep
-  :group 'php)
+  :group 'php-ts)
 
 (defcustom php-ts-mode-disable-inject nil
   "If true disable html/css/javascript injection."
   :version "30.1"
   :type '(boolean)
-  :group 'php)
+  :group 'php-ts)
 
 (defcustom php-ts-mode-disable-phpdoc-inject nil
   "If true disable phpdoc injection."
   :version "30.1"
   :type '(boolean)
-  :group 'php)
+  :group 'php-ts)
 
 ;;; Utils
 
