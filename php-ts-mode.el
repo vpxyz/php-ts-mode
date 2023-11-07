@@ -37,9 +37,10 @@
 ;; Features
 ;; 
 ;; * Indent
-;; * IMeny
+;; * IMenu
 ;; * Navigation
 ;; * Which-function
+;; * Tree-sitter parser installation helper
 
 ;;; Code:
 
@@ -67,7 +68,11 @@
 
 ;;; Install treesitter language parsers
 (defvar php-ts-mode--language-source-alist
-  "Treesitter language parser alist required by php-ts-mode."
+  "Treesitter language parser alist required by php-ts-mode.
+
+You can customize this variable if you want to stick to a specific
+commit and/or use different parsers.
+"
   '((php . ("https://github.com/tree-sitter/tree-sitter-php"))
     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
@@ -95,7 +100,6 @@
 
 Apart from setting the default value of SYM to VAL, also change
 the value of SYM in `php-ts-mode' buffers to VAL.
-
 SYM should be `php-ts-mode-indent-style', and VAL should be a style
 symbol."
   (set-default sym val)
@@ -112,27 +116,27 @@ symbol."
               (my-loop (append res (list buffer)) (cdr buffers))
             (my-loop res (cdr buffers))))))))
 
-(defcustom php-ts-mode-indent-style 'default
+(defcustom php-ts-mode-indent-style 'psr2
   "Style used for indentation.
 
 The selected style could be one of:
-`Default' - use a reasonable default style for PHP.
-`PSR-2/PSR-12' - use PSR standards (PSR-2, PSR-12).
+`PSR-2/PSR-12' - use PSR standards (PSR-2, PSR-12), thi is the default.
 `PEAR' - use coding styles preferred for PEAR code and modules.
 `Drupal' - use coding styles preferred for working with Drupal projects.
 `WordPress' - use coding styles preferred for working with WordPress projects.
-`Symfony2' - use coding styles preferred for working with Symfony2 projects.
+`Symfony' - use coding styles preferred for working with Symfony projects.
+`Zend' - use coding styles preferred for working with Zend projects.
 
 If one of the supplied styles doesn't suffice a function could be
 set instead.  This function is expected return a list that
 follows the form of `treesit-simple-indent-rules'."
   :version "30.1"
-  :type '(choice (const :tag "Default" default)
-                 (const :tag "PSR-2/PSR-12" psr2)
+  :type '(choice (const :tag "PSR-2/PSR-12" psr2)
                  (const :tag "PEAR" pear)
                  (const :tag "Drupal" drupal)
                  (const :tag "WordPress" wordpress)
-                 (const :tag "Symfony2" symfony2)
+                 (const :tag "Symfony" symfony)
+		 (const :tag "Zend" zend)
                  (function :tag "A function for user customized style" ignore))
   :set #'php-ts-mode--indent-style-setter
   :safe 'c-ts-indent-style-safep
@@ -154,17 +158,17 @@ follows the form of `treesit-simple-indent-rules'."
 
 (defun php-ts-mode--get-indent-style ()
   "Helper function to set indentation style.
-MODE can be `pear', `default', `psr2', `drupal', `wordpress', `symfony2'."
+MODE can be `psr2', `pear', `drupal', `wordpress', `symfony', `zend'."
   (let ((style
          (if (functionp php-ts-mode-indent-style)
              (funcall php-ts-mode-indent-style)
            (pcase php-ts-mode-indent-style
-             ('default (alist-get 'default (php-ts-mode--indent-styles)))
+	     ('psr2 (alist-get 'psr2 (php-ts-mode--indent-styles)))
              ('pear (alist-get 'pear (php-ts-mode--indent-styles)))
              ('drupal (alist-get 'drupal (php-ts-mode--indent-styles)))
              ('wordpress (alist-get 'wordpress (php-ts-mode--indent-styles)))
-             ('symfony2 (alist-get 'symfony2 (php-ts-mode--indent-styles)))
-             ('psr2 (alist-get 'psr2 (php-ts-mode--indent-styles)))))))
+             ('symfony (alist-get 'symfony (php-ts-mode--indent-styles)))
+	     ('zend (alist-get 'zend (php-ts-mode--indent-styles)))))))
     `((php ,@style))))
 
 (defun php-ts-mode--prompt-for-style ()
@@ -273,7 +277,7 @@ current buffer, the ranges covered by each parser"
 	   ((parent-is "member_call_expression") first-sibling php-ts-mode-indent-offset)
 	   ((parent-is "function_definition") parent-bol 0)
 	   ;;((parent-is "function_call_expression") first-sibling 0) ;; spostato nella parte specifiche per i linguaggi
-           ((parent-is "conditional_expression") first-sibling 0)
+           ((parent-is "conditional_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "assignment_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "array_creation_expression") parent-bol php-ts-mode-indent-offset)
            ((parent-is "parenthesized_expression") first-sibling 1)
@@ -310,22 +314,27 @@ current buffer, the ranges covered by each parser"
 		(parent-is "do_statement"))
 	    parent-bol php-ts-mode-indent-offset)
            )))
-    `((default
-       ((or (parent-is "arguments")
-	     (parent-is "formal_parameters"))
-	 first-sibling 1)
-	((parent-is "function_call_expression") first-sibling 0)
-       ,@common)
-      (drupal ,@common)
-      (psr2
+    `((psr2
        ((node-is ")") parent-bol 0)
        ((or (parent-is "arguments")
-	   (parent-is "formal_parameters"))
-       parent-bol php-ts-mode-indent-offset)
+	    (parent-is "formal_parameters"))
+	parent-bol php-ts-mode-indent-offset)
        ((parent-is "function_call_expression") parent-bol php-ts-mode-indent-offset)
-      ,@common)
-      (pear ,@common)
-      (wordpress ,@common))))
+       ,@common)
+      (pear
+       ((or (node-is "case_statement")
+	    (node-is "default_statement"))
+	parent-bol 0)
+       ,@common)
+      (drupal ,@common)
+      (symfony ,@common)
+      (wordpress ,@common)
+      (zend
+       ((or (parent-is "arguments")
+	    (parent-is "formal_parameters"))
+	first-sibling 1)
+       ((parent-is "function_call_expression") first-sibling 0)
+       ,@common))))
 
 ;; TODO: questo firse non serve
 (defun php-ts-mode--top-level-label-matcher (node &rest _)
@@ -686,10 +695,9 @@ Derived from `c-ts-common--fill-paragraph', support '#' comment."
   "Set up local variables for PHP comment.
 Derived from `c-ts-common-comment-setup'."
   (c-ts-common-comment-setup)
-  (setq-local comment-multi-line t)
-  (setq-local comment-style 'extra-line)
-  (setq-local comment-line-break-function #'c-indent-new-comment-line)
-  (setq-local fill-paragraph-function #'php-ts-mode--fill-paragraph))
+  (setq-local comment-multi-line t
+	      comment-style 'extra-line
+	      fill-paragraph-function #'php-ts-mode--fill-paragraph))
 
 ;;; Defun navigation
 
@@ -709,6 +717,8 @@ Ie, NODE is not nested."
                           "enum_declaration"
                           "union_declaration"
                           "declaration"))))))
+
+;;; Injected tree-sitter helper
 
 (defvar php-ts-mode--custom-html-font-lock-settings
   (treesit-font-lock-rules
@@ -738,6 +748,7 @@ Ie, NODE is not nested."
    :feature 'property
    `((attribute_name) @font-lock-variable-name-face))
   "Tree-sitter font-lock settings for `php-html-ts-mode'.")
+
 
 ;;; Modes
 
@@ -911,7 +922,6 @@ Ie, NODE is not nested."
                               (treesit-range-rules
                                :embed 'phpdoc
                                :host 'php
-			       ;;:offset '(0 . -1)
 			       `(((comment) @phpdoc (:match "^/\\*\\*" @phpdoc)))
 			       )))
 
