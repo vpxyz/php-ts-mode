@@ -808,11 +808,11 @@ Ie, NODE is not nested."
   
   (setq-local treesit-thing-settings
               `((php
-		 (defun ,'(treesit-defun-type-regexp))
+		 (defun ,treesit-defun-type-regexp)
 		 ;;(sexp ,'(treesit-sexp-type-regexp))
 		 (sexp (not ,(rx (or "{" "}" "[" "]" "(" ")" ","))))
-		 (sentence  ,'(treesit-sentence-type-regexp))
-		 (text ,'(regexp-opt '("comment"))))))
+		 (sentence  ,treesit-sentence-type-regexp)
+		 (text ,(regexp-opt '("comment" "text"))))))
   
   ;; Nodes like struct/enum/union_specifier can appear in
   ;; function_definitions, so we need to find the top-level node.
