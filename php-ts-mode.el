@@ -238,6 +238,7 @@ in this Emacs session."
   (php-ts-mode--indent-style-setter 'php-ts-mode-indent-style style))
 
 (defun php-ts-mode--set-indent-offset (style)
+  "Set the offset according to STYLE."
   (if (eq style 'drupal)
       (setq php-ts-mode-indent-offset 2)
     (setq php-ts-mode-indent-offset 4)))
