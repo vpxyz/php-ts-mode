@@ -589,6 +589,7 @@ If NODE is null return `line-beginning-position'."
 
    :language 'php
    :feature 'definition
+   :override t
    '((php_tag) @font-lock-preprocessor-face
      ("?>") @font-lock-preprocessor-face
      ;; Highlights identifiers in declarations.
@@ -940,13 +941,44 @@ Ie, NODE is not nested."
 
 ;;; Injected tree-sitter helper
 (defconst php-ts-mode--custom-html-font-lock-settings
-  (append (treesit-font-lock-rules
-	   :language 'html
-	   :override t
-	   :feature 'comment
-	   `((comment) @font-lock-comment-face
-	     (fragment (text) @font-lock-comment-face)))
-	  html-ts-mode--font-lock-settings)
+  (treesit-font-lock-rules
+   :language 'html
+   :override t
+   :feature 'comment
+   `((comment) @font-lock-comment-face
+     (fragment (text) @font-lock-comment-face))
+
+   :language 'html
+   :override t
+   :feature 'keyword
+   `("doctype" @font-lock-keyword-face)
+
+   :language 'html
+   :override t
+   :feature 'definition
+   `((tag_name) @font-lock-function-name-face)
+
+   :language 'html
+   :override 'append
+   :feature 'string
+   `((quoted_attribute_value) @font-lock-string-face)
+
+   :language 'html
+   :override t
+   :feature 'property
+   `((attribute_name) @font-lock-variable-name-face))
+  
+  ;; (append (treesit-font-lock-rules
+  ;; 	   :language 'html
+  ;; 	   :override t
+  ;; 	   :feature 'comment
+  ;; 	   `((comment) @font-lock-comment-face
+  ;; 	     (fragment (text) @font-lock-comment-face))
+  ;; 	   :language 'html
+  ;; 	   :override 'append
+  ;; 	   :feature 'string
+  ;; 	   `((quoted_attribute_value) @font-lock-string-face))
+  ;; 	  html-ts-mode--font-lock-settings)
   "Tree-sitter font-lock settings for `php-html-ts-mode'.")
 
 ;;; Modes
