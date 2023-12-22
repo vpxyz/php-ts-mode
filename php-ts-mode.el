@@ -98,6 +98,14 @@ commit and/or use different parsers.")
   :safe 'integerp
   :group 'php-ts)
 
+(defcustom php-ts-mode-js-css-indent-offset 0
+  "Number of spaces for javascript and css relative to html tags."
+  :tag "PHP javascript or css indent offset"
+  :version "30.1"
+  :type 'integer
+  :safe 'integerp
+  :group 'php-ts)
+
 (defcustom php-ts-mode-php-executable (or (executable-find "php") "/usr/bin/php")
   "The location of PHP executable."
   :tag "PHP Executable"
@@ -1163,13 +1171,8 @@ Ie, NODE is not nested."
 	  (setq-local treesit-simple-indent-rules
 		      (append treesit-simple-indent-rules
 			      html-ts-mode--indent-rules
-			      ;; per aggiungere regole in test, fare cosi
-			      ;;`((php-ts-mode--js-css-tag-bol prev-line js-indent-level) ,@(cdr (car js--treesit-indent-rules))))
-			      `((javascript ((parent-is "program") php-ts-mode--js-css-tag-bol 0) ,@(cdr (car js--treesit-indent-rules))))
-			      `((css ((parent-is "stylesheet") php-ts-mode--js-css-tag-bol 0) ,@(cdr (car css--treesit-indent-rules))))
-			      ;;js--treesit-indent-rules
-			      ;;css--treesit-indent-rules
-			      ))
+			      `((javascript ((parent-is "program") php-ts-mode--js-css-tag-bol php-ts-mode-js-css-indent-offset) ,@(cdr (car js--treesit-indent-rules))))
+			      `((css ((parent-is "stylesheet") php-ts-mode--js-css-tag-bol php-ts-mode-js-css-indent-offset) ,@(cdr (car css--treesit-indent-rules))))))
 
 	  (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point)
 
