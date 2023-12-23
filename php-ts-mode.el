@@ -630,7 +630,8 @@ If NODE is null return `line-beginning-position'."
    :language 'php
    :feature 'function-scope
    :override t
-   '((scoped_call_expression
+   '((relative_scope) @font-lock-constant-face
+     (scoped_call_expression
       scope: (name) @font-lock-constant-face)
      (class_constant_access_expression (name) @font-lock-constant-face))
 
@@ -1246,8 +1247,7 @@ in order to test code that requires multiple concurrent requests to the built-in
 		      (cond (router router)
 			    (php-ts-mode-ws-router php-ts-mode-ws-router)
 			    (t nil))
-		      )))
-	 )
+		      ))))
     (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workes))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
     (message "Run PHP built-in server with args %s" (string-join args " "))
@@ -1255,12 +1255,6 @@ in order to test code that requires multiple concurrent requests to the built-in
     (funcall
      (if (called-interactively-p 'interactive) #'display-buffer #'get-buffer)
      (format "*%s*" buf-name))))
-
-(defun php-ts-mode-kill-php-webserver ()
-  "Kill the PHP buiilt-in webserver process."
-  (interactive)
-  (with-current-buffer php-ts-mode-inferior-buffer ;; qui devo mettere un modo per selezione il buffer, uno potrebbe decidere di avviarne più di uno
-    (kill-buffer-and-window)))
 
 ;;;###autoload
 (defun php-ts-mode-inferior-php ()
