@@ -367,23 +367,19 @@ If NODE is null return `line-beginning-position'."
       (goto-char (treesit-node-start node))
       (re-search-backward "<script>\\|<style>"))))
 
-;; (defun php-ts-mode--js-css-tag-bol (node parent bol &rest _)
-;;   "Find the first non-space caracters of html tags <script> or <style>."
-;;   (and (null node)
-;;        (save-excursion
-;; 	   (goto-char (treesit-node-start node))
-;; 	   (re-search-backward "<script>\\|<style>"))))
+(defun php-ts-mode--parent-eol (node parent &rest _)
+  "Find the last non-space caracters of the PARENT of the current NODE."
+  (save-excursion
+    (goto-char (treesit-node-start parent))
+    (line-end-position)))
 
 (defun php-ts-mode--indent-styles ()
   "Indent rules supported by `php-ts-mode'."
   (let ((common
 	 `(((or (node-is "program")
 		(node-is "php_tag"))
-	    ;;parent-bol 0)
-	    parent 0)
-	   ;; column-0 0)
-	   ;; ((parent-is "program") column-0 0)
-	   ;; ((parent-is "php_tag") column-0 0)
+	    parent-bol 0)
+	   
 	   (php-ts-mode--else-heuristic prev-line php-ts-mode-indent-offset)
 
 	   ((query "(ERROR (ERROR)) @indent") column-0 0)
@@ -401,13 +397,11 @@ If NODE is null return `line-beginning-position'."
 	    c-ts-common-comment-2nd-line-anchor
 	    1)
 	   ((parent-is "comment") prev-adaptive-prefix 0)
-	   ;;((parent-is "comment") comment-start -1)
-	   ;; da java-ts-mode
-	   ;; ((and (parent-is "comment") c-ts-common-looking-at-star)
-	   ;;  c-ts-common-comment-start-after-first-star -1)
-	   ;; ((parent-is "comment") prev-adaptive-prefix 0)
-
 	   ((parent-is "method_declaration") parent-bol 0)
+	   ((node-is "class_interface_clause") parent-bol php-ts-mode-indent-offset)
+	   ;;((query "(class_interface_clause (name) @indent)") parent-bol php-ts-mode-indent-offset)
+	   ((query "(class_interface_clause (name) @indent)") php-ts-mode--parent-eol 1)
+	   ((parent-is "class_declaration") parent-bol 0)
 	   ((parent-is "function_definition") parent-bol 0)
 	   ((parent-is "member_call_expression") first-sibling php-ts-mode-indent-offset)
 	   ((parent-is "conditional_expression") parent-bol php-ts-mode-indent-offset)
@@ -426,7 +420,8 @@ If NODE is null return `line-beginning-position'."
 
 	   ;; Closing bracket. Must stay here, the rule order matter.
 	   ((node-is "}") standalone-parent 0)
-	   ((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
+	   ;;((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
+	   ((parent-is "declaration_list") column-0 php-ts-mode-indent-offset)
 	   ;;((parent-is "attribute") parent-bol 0)
 	   ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
 
@@ -976,18 +971,18 @@ Ie, NODE is not nested."
    :override t
    :feature 'property
    `((attribute_name) @font-lock-variable-name-face))
-  
+
   ;; (append (treesit-font-lock-rules
-  ;; 	   :language 'html
-  ;; 	   :override t
-  ;; 	   :feature 'comment
-  ;; 	   `((comment) @font-lock-comment-face
-  ;; 	     (fragment (text) @font-lock-comment-face))
-  ;; 	   :language 'html
-  ;; 	   :override 'append
-  ;; 	   :feature 'string
-  ;; 	   `((quoted_attribute_value) @font-lock-string-face))
-  ;; 	  html-ts-mode--font-lock-settings)
+  ;;	   :language 'html
+  ;;	   :override t
+  ;;	   :feature 'comment
+  ;;	   `((comment) @font-lock-comment-face
+  ;;	     (fragment (text) @font-lock-comment-face))
+  ;;	   :language 'html
+  ;;	   :override 'append
+  ;;	   :feature 'string
+  ;;	   `((quoted_attribute_value) @font-lock-string-face))
+  ;;	  html-ts-mode--font-lock-settings)
   "Tree-sitter font-lock settings for `php-html-ts-mode'.")
 
 ;;; Modes
@@ -1274,12 +1269,15 @@ in order to test code that requires multiple concurrent requests to the built-in
 			    'php-ts-mode-inferior--write-history))
 
     (with-current-buffer php-ts-mode-inferior-buffer
-      (setq-local comint-input-ignoredups t
+      (setq-local mode-line-process '(": %s")
+		  comint-input-ignoredups t
 		  comint-input-ring-file-name php-ts-mode-inferior-history
 		  comint-prompt-read-only t
-		  comint-prompt-regexp (rx-to-string `(: bol
-							 "php >"
-							 (1+ space))))
+		  comint-prompt-regexp "php > "
+		  ;; comint-prompt-regexp (rx-to-string `(: bol
+		  ;;					 "php >"
+		  ;;					 (1+ space)))
+		  )
       (comint-read-input-ring t)
       (add-hook 'comint-preoutput-filter-functions
 		(lambda (string)
