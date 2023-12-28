@@ -360,7 +360,7 @@ PARENT is its parent."
 
 (defun php-ts-mode--js-css-tag-bol (node parent &rest _)
   "Find the first non-space caracters of html tags <script> or <style>.
-If NODE is null return `line-beginning-position'."
+If NODE is null return `line-beginning-position'. PARENT is ignored."
   (if (null node)
       (line-beginning-position)
     (save-excursion
@@ -775,8 +775,8 @@ If NODE is null return `line-beginning-position'."
 					      override start end))
 	     ;;(message "fifth while")
 	     (goto-char node-start)
-	     (while (re-search-forward "^\\(?:/\\*\\)?\\(?:\\s \\|\\*\\)*\\(@[[:alpha:]][-[:alpha:]\\]*\\)" node-end t) ; "@foo ..." markup.
-	       ;;(message " mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
+	     (while (re-search-forward "\\(@[[:alpha:]][-[:alpha:]\\]*\\)" node-end t) ; "@foo ..." markup.
+	       ;;(message "test mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
 	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
 					      'font-lock-doc-markup-face
 					      override start end))
