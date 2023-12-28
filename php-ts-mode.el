@@ -98,7 +98,7 @@ commit and/or use different parsers.")
   :safe 'integerp
   :group 'php-ts)
 
-(defcustom php-ts-mode-js-css-indent-offset 0
+(defcustom php-ts-mode-js-css-indent-offset 2
   "Number of spaces for javascript and css relative to html tags."
   :tag "PHP javascript or css indent offset"
   :version "30.1"
