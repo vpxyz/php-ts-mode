@@ -125,7 +125,8 @@ commit and/or use different parsers.")
 
 (defcustom php-ts-mode-ws-hostname "localhost"
   "The hostname that will be served by the PHP built-in webserver.
-See `https://www.php.net/manual/en/features.commandline.webserver.php'"
+If nil, then `php-ts-mode-run-php-webserver' will ask you for the hostname.
+See `https://www.php.net/manual/en/features.commandline.webserver.php'."
   :tag "PHP built-in web server hostname"
   :version "30.1"
   :type 'string
@@ -133,7 +134,8 @@ See `https://www.php.net/manual/en/features.commandline.webserver.php'"
   :group 'php-ts)
 
 (defcustom php-ts-mode-ws-port 3000
-  "The port on which the PHP built-in webserver will listen."
+  "The port on which the PHP built-in webserver will listen.
+If nil, then `php-ts-mode-run-php-webserver' will ask you for the port number."
   :tag "PHP built-in web server port"
   :version "30.1"
   :type 'integer
@@ -141,7 +143,8 @@ See `https://www.php.net/manual/en/features.commandline.webserver.php'"
   :group 'php-ts)
 
 (defcustom php-ts-mode-ws-document-root nil
-  "The root of the documents that the PHP built-in webserver will serve."
+  "The root of the documents that the PHP built-in webserver will serve.
+If nil, then `php-ts-mode-run-php-webserver' will ask you for the document root."
   :tag "PHP built-in web server port"
   :version "30.1"
   :type 'string
