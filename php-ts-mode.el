@@ -996,7 +996,7 @@ Ie, NODE is not nested."
 
 ;;; Modes
 
-(defun php-ts-mode-set-comment-type ()
+(defun php-ts-mode-set-comment-style ()
   (interactive)
   (setq-local comment-start
 	      (completing-read
@@ -1014,7 +1014,7 @@ Ie, NODE is not nested."
   "C-c C-q" #'php-ts-mode--indent-defun
   "C-c ." #'php-ts-mode-set-style
   "C-c C-c" #'comment-region
-  "C-c C-k" #'php-ts-mode-set-comment-type)
+  "C-c C-k" #'php-ts-mode-set-comment-style)
 
 (easy-menu-define php-ts-mode-menu php-ts-mode-map
   "Menu bar entry for `php-ts-mode'."
@@ -1039,7 +1039,7 @@ Ie, NODE is not nested."
       :help "Set C/C++ indentation style for current buffer"]
      ["Show Current Indentation Style"(message "Indentation Style: %s"
 					       php-ts-mode-indent-style)
-      :help "Show the name of the C/C++ indentation style for current buffer"])
+      :help "Show the name of the C/C++ indentation style for current buffer"]
     ["Set Comment Style" php-ts-mode-set-comment-style
       :help "Choose PHP comment style between block and line comments"])
     "--"
