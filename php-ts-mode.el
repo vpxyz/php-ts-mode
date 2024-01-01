@@ -720,23 +720,23 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
   (save-excursion
     (let ((node-start (treesit-node-start node))
 	  (node-end (treesit-node-end node)))
-      ;;(message "start=%d end=%d node-start=%d node-end=%d" start end node-start node-end)
-      ;;(message "node-text %s" (treesit-node-text node))
       (goto-char node-start)
       (cond ((looking-at-p "/\\*\\*")
 	     ;; first of all fontify the doc comments
 	     (treesit-fontify-with-override node-start node-end
 					    'font-lock-doc-face
 					    override start end)
-	     (goto-char node-start)
-	     ;;(message "firt while")
-	     (while (re-search-forward "{@[-[:alpha:]]+\\s-*\\([^}]*\\)}" node-end t) ;; "{@foo ...}" markup.
+	     ;; (goto-char node-start)
+	     ;; ;;(message "firt while")
+	     ;; "{@foo ...}" markup.
+	     (while (re-search-forward "{@[-[:alpha:]]+\\s-*\\([^}]*\\)}" node-end t)
 	       ;;(message " mb-0 = %d, mb-end-0 = %d" (match-beginning 0)  (match-end 0))
 	       (treesit-fontify-with-override (match-beginning 0) (match-end 0)
 					      'font-lock-doc-markup-face
 					      override start end))
 	     (goto-char node-start)
 	     ;;(message "second while")
+	     ;; variable
 	     (while (re-search-forward (eval-when-compile (rx (group "$") (group (in "A-Za-z_") (* (in "0-9A-Za-z_"))))) node-end t)
 	       ;;(message " mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
 	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
@@ -747,6 +747,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					      'font-lock-variable-name-face
 					      override start end))
 	     (goto-char node-start)
+	     ;; $this
 	     (while (re-search-forward "\\(\\$\\)\\(this\\)\\>" node-end t)
 	       ;;(message " mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
 	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
@@ -758,6 +759,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					      override start end))
 	     (goto-char node-start)
 	     ;;(message "third while")
+	     ;; php-doc etc. tags
 	     (while (re-search-forward (concat "\\s-@" (eval-when-compile (rx (? (or "phan" "phpstan" "psalm") "-")))
 					       (regexp-opt php-ts-mode--phpdoc-tags)
 					       "\\s-+"
@@ -771,6 +773,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					      override start end))
 	     (goto-char node-start)
 	     ;;(message "forth while")
+	     ;; php-doc types
 	     (while (re-search-forward (concat "\\(?:|\\|\\?\\|\\s-\\)\\(" (regexp-opt php-ts-mode--phpdoc-types 'words) "\\)")
 				       node-end t)
 	       ;;(message " mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
@@ -779,13 +782,15 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					      override start end))
 	     ;;(message "fifth while")
 	     (goto-char node-start)
-	     (while (re-search-forward "\\(@[[:alpha:]][-[:alpha:]\\]*\\)" node-end t) ; "@foo ..." markup.
+	     ;; "@foo ..." markup.
+	     (while (re-search-forward "\\(@[[:alpha:]][-[:alpha:]\\]*\\)" node-end t)
 	       ;;(message "test mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
 	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
 					      'font-lock-doc-markup-face
 					      override start end))
 	     ;;(goto-char node-start)
-	     ;; (while (re-search-forward (concat "</?\\sw"			; HTML tags.
+	     ;;	;; HTML tags.
+	     ;; (while (re-search-forward (concat "</?\\sw"
 	     ;;					       "\\("
 	     ;;					       (concat "\\sw\\|\\s \\|[=\n\r*.:]\\|"
 	     ;;						       "\"[^\"]*\"\\|'[^']*'")
@@ -793,8 +798,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 	     ;;   (treesit-fontify-with-override (match-beginning 0) (match-end 0)
 	     ;;					      'font-lock-doc-markup-face
 	     ;;					      override start end))
-	     ;; fontify email
 	     (goto-char node-start)
+	     ;; email
 	     (while (re-search-forward "<[a-zA-0_.]+@[a-zA-0_.]+>" node-end t)
 	       (treesit-fontify-with-override (match-beginning 0) (match-end 0)
 					      'font-lock-doc-markup-face
@@ -991,28 +996,64 @@ Ie, NODE is not nested."
 
 ;;; Modes
 
+(defun php-ts-mode-set-comment-type ()
+  (interactive)
+  (setq-local comment-start
+	      (completing-read
+	       "Choose comment style: "
+	       '("// " "/* " "# ") nil t nil nil "// "))
+  (if (string= comment-start "/* ")
+      (setq-local comment-end " */")
+    (setq-local comment-add nil))
+  (setq mode-name (concat "PHP" (string-trim-right comment-start)))
+  (force-mode-line-update))
+
 (defvar-keymap php-ts-mode-map
   :doc "Keymap for `php-ts-mode' buffers."
   :parent prog-mode-map
   "C-c C-q" #'php-ts-mode--indent-defun
   "C-c ." #'php-ts-mode-set-style
   "C-c C-c" #'comment-region
-  ;;"C-c C-k" #'c-ts-mode-toggle-comment-style
-  )
+  "C-c C-k" #'php-ts-mode-set-comment-type)
 
 (easy-menu-define php-ts-mode-menu php-ts-mode-map
   "Menu bar entry for `php-ts-mode'."
   `("Php"
-    ["Evaluate Buffer" php-ts-mode-send-buffer]
-    ["Evaluate File" php-ts-mode-send-file]
-    ["Evaluate Region" php-ts-mode-send-region]
+    ["Comment Out Region" comment-region
+     :enable mark-active
+     :help "Comment out the region between the mark and point"]
+    ["Uncomment Region" (comment-region (region-beginning)
+                                        (region-end) '(4))
+     :enable mark-active
+     :help "Uncomment the region between the mark and point"]
+    ["Indent Top-level Expression" php-ts-mode--indent-defun
+     :help "Indent/reindent top-level function, class, etc."]
+    ["Indent Line or Region" indent-for-tab-command
+     :help "Indent current line or region, or insert a tab"]
+    ["Forward Expression" forward-sexp
+     :help "Move forward across one balanced expression"]
+    ["Backward Expression" backward-sexp
+     :help "Move back across one balanced expression"]
+    ("Style..."
+     ["Set Indentation Style..." php-ts-mode-set-style
+      :help "Set C/C++ indentation style for current buffer"]
+     ["Show Current Indentation Style"(message "Indentation Style: %s"
+					       php-ts-mode-indent-style)
+      :help "Show the name of the C/C++ indentation style for current buffer"])
+    ["Set Comment Style" php-ts-mode-set-comment-style
+      :help "Choose PHP comment style between block and line comments"])
     "--"
-    ["Start Process" php-ts-mode-inferior-php]
-    ["Show Process Buffer" php-ts-mode-show-process-buffer]
-    ["Hide Process Buffer" php-ts-mode-hide-process-buffer]
-    ["Kill Process" php-ts-mode-kill-process]
+     ["Start interpreter" run-php
+      :help "Run inferior PHP process in a separate buffer"]
+     ["Show interpreter buffer" php-ts-mode-show-process-buffer]
+     ["Hide interpreter buffer" php-ts-mode-hide-process-buffer]
+     ["Kill Process" php-ts-mode-kill-process]
+     ["Evaluate buffer" php-ts-mode-send-buffer]
+     ["Evaluate file" php-ts-mode-send-file]
+     ["Evaluate region" php-ts-mode-send-region]
     "--"
-    ["Start built-in webserver" php-ts-mode-run-php-webserver]
+     ["Start built-in webserver" php-ts-mode-run-php-webserver
+      :help "Run the built-in PHP webserver"]
     "--"
     ["Customize" (lambda () (interactive) (customize-group "php-ts"))]))
 
@@ -1043,18 +1084,19 @@ Ie, NODE is not nested."
 	      ;; compound_statement makes us jump over too big units
 	      ;; of code, so skip that one, and include the other
 	      ;; statements.
-	      (regexp-opt '("statement"
-			    "declaration"
-			    "expression_statement"
-			    "if_statement"
-			    "switch_statement"
-			    "do_statement"
-			    "while_statement"
-			    "for_statement"
-			    "return_statement"
-			    "break_statement"
+	      (regexp-opt '("break_statement"
+			    "case_statement"
 			    "continue_statement"
-			    "case_statement")))
+			    "declaration"
+			    "default_statement"
+			    "do_statement"
+			    "expression_statement"
+			    "for_statement"
+			    "if_statement"
+			    "return_statement"
+			    "switch_statement"
+			    "while_statement"
+			    "statement")))
 
   (setq-local treesit-sexp-type-regexp
 	      (regexp-opt '("definition"
@@ -1085,9 +1127,6 @@ Ie, NODE is not nested."
 
   (setq-local c-ts-common-indent-offset 'php-ts-mode-indent-offset)
   (setq-local treesit-simple-indent-rules (php-ts-mode--get-indent-style))
-
-  ;; (when (not (eq php-ts-indent-style 'default))
-  ;;   (setq-local fill-column 78))
 
   ;; Comment
   (php-ts-mode-comment-setup)
@@ -1126,20 +1165,6 @@ Ie, NODE is not nested."
 		      css-ts-parser (treesit-parser-create 'css)
 		      javascript-ts-parser (treesit-parser-create 'javascript))
 
-	  ;; TODO: per indentare js e css rispettando l'indentazione
-	  ;; dei tag html bisogna mettere in testa, dopo ((javascript ad esempio,
-	  ;; una roba tipo:
-	  ;; ((parent-is "program")
-	  ;; (lambda (node parent &rest _)
-	  ;;   ;; If javascript is embedded indent to parent
-	  ;;   ;; otherwise indent to the bol.
-	  ;;   (if (eq (treesit-language-at (point-min)) 'javascript)
-	  ;;       (point-min)
-	  ;;     (save-excursion
-	  ;;       (goto-char (treesit-node-start parent))
-	  ;;       (back-to-indentation)
-	  ;;       (point))
-	  ;;     )) 0)
 	  (setq-local treesit-range-settings
 		      (treesit-range-rules
 		       :embed 'html
@@ -1312,11 +1337,11 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 		 ;; Filter out the extra prompt characters that
 		 ;; accumulate in the output when sending regions
 		 ;; to the inferior process.
-		  (string-trim (replace-regexp-in-string
-		   "\\(?:php [\">{]\\)+\\|\\(?:/\\*  >\\)+"
-		   ""
-		   string))
-		  ;; Re-add the prompt for the next line.
+		 (string-trim (replace-regexp-in-string
+			       "\\(?:php [\">{]\\)+\\|\\(?:/\\*  >\\)+"
+			       ""
+			       string))
+		 ;; Re-add the prompt for the next line.
 		 "\nphp > ")))
 	    nil t)
   (when php-ts-mode-inferior-history
