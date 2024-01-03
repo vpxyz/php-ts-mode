@@ -296,7 +296,8 @@ To set the default indent style globally, use
   "Return the ranges covered by the parsers.
 
 `php-ts-mode' use 4 parsers, this function returns, for the
-current buffer, the ranges covered by each parser"
+current buffer, the ranges covered by each parser.
+Usefull for debugging."
   (let ((ranges))
     (if (not (treesit-parser-list))
 	(message "At least one parser must be initialized"))
@@ -369,7 +370,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
       (line-beginning-position)
     (save-excursion
       (goto-char (treesit-node-start node))
-      (re-search-backward "<script>\\|<style>"))))
+      (re-search-backward "<script>\\|<style>" nil t))))
 
 (defun php-ts-mode--parent-eol (node parent &rest _)
   "Find the last non-space caracters of the PARENT of the current NODE."
@@ -484,6 +485,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 	    (parent-is "formal_parameters"))
 	first-sibling 1)
        ((parent-is "function_call_expression") first-sibling 0)
+       ((parent-is "binary_expression") first-sibling 0)
        ,@common))))
 
 ;;; Font-lock
@@ -683,9 +685,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    :feature 'error
    :override t
    ;;'((ERROR) @font-lock-warning-face)
-   '((ERROR) @php-ts-mode--fontify-error)
-   )
-  )
+   '((ERROR) @php-ts-mode--fontify-error)))
 
 ;;; Font-lock helpers
 
@@ -822,24 +822,26 @@ For NODE, OVERRIDE, START, and END, see
    'font-lock-warning-face
    override start end))
 
-;; TODO: this function was taken from elixir-ts-mode, why not put it in treesit.el ?
+(defun php-ts-mode--html-language-at-point (point)
+  "Return the language at POINT assuming the point is within a HTML region."
+  (let* ((node (treesit-node-at point 'html))
+         (parent (treesit-node-parent node))
+	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
+    (message "node-query = %s" node-query)
+    (cond
+     ((string-equal "(script_element (raw_text))" node-query) 'javascript)
+     ((string-equal "(style_element (raw_text))" node-query) 'css)
+     (t 'html))))
+
 (defun php-ts-mode--language-at-point (point)
   "Return the language at POINT."
-  (let* ((range nil)
-	 (language-in-range
-	  (cl-loop
-	   for parser in (treesit-parser-list)
-	   do (setq range
-		    (cl-loop
-		     for range in (treesit-parser-included-ranges parser)
-		     if (and (>= point (car range)) (<= point (cdr range)))
-		     return parser))
-	   if range
-	   return (treesit-parser-language parser))))
-    (if (null language-in-range)
-	(when-let ((parser (car (treesit-parser-list))))
-	  (treesit-parser-language parser))
-      language-in-range)))
+  (let* ((node (treesit-node-at point 'php))
+	 (parent (treesit-node-parent node))
+	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
+    (if (not (member node-query '("(program (text))"
+				  "(text_interpolation (text))")))
+	'php
+      (php-ts-mode--html-language-at-point point))))
 
 ;;; Imenu
 
@@ -1081,40 +1083,72 @@ Ie, NODE is not nested."
 
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
-  (setq-local treesit-sentence-type-regexp
-	      ;; compound_statement makes us jump over too big units
-	      ;; of code, so skip that one, and include the other
-	      ;; statements.
-	      (regexp-opt '("break_statement"
-			    "case_statement"
-			    "continue_statement"
-			    "declaration"
-			    "default_statement"
-			    "do_statement"
-			    "expression_statement"
-			    "for_statement"
-			    "if_statement"
-			    "return_statement"
-			    "switch_statement"
-			    "while_statement"
-			    "statement")))
 
-  (setq-local treesit-sexp-type-regexp
-	      (regexp-opt '("definition"
-			    "qualifier"
-			    "type"
-			    "assignment"
-			    "expression"
-			    "literal"
-			    "string")))
+  ;; now this variable is obsolete
+  ;; (setq-local treesit-sentence-type-regexp
+  ;; 	      ;; compound_statement makes us jump over too big units
+  ;; 	      ;; of code, so skip that one, and include the other
+  ;; 	      ;; statements.
+  ;; 	      (regexp-opt '("break_statement"
+  ;; 			    "case_statement"
+  ;; 			    "continue_statement"
+  ;; 			    "declaration"
+  ;; 			    "default_statement"
+  ;; 			    "do_statement"
+  ;; 			    "expression_statement"
+  ;; 			    "for_statement"
+  ;; 			    "if_statement"
+  ;; 			    "return_statement"
+  ;; 			    "switch_statement"
+  ;; 			    "while_statement"
+  ;; 			    "statement")))
+
+  ;; now this variable is obsolete
+  ;; (setq-local treesit-sexp-type-regexp
+  ;; 	      (regexp-opt '("definition"
+  ;; 			    "qualifier"
+  ;; 			    "type"
+  ;; 			    "assignment"
+  ;; 			    "expression"
+  ;; 			    "literal"
+  ;; 			    "string")))
+
+  ;; (setq-local treesit-thing-settings
+  ;; 	      `((php
+  ;; 		 (defun ,treesit-defun-type-regexp)
+  ;; 		 ;;(sexp ,'(treesit-sexp-type-regexp))
+  ;; 		 (sexp (not ,(eval-when-compile
+  ;; 			       (rx (or "{" "}" "[" "]" "(" ")" ",")))))
+  ;; 		 (sentence  ,treesit-sentence-type-regexp)
+  ;; 		 (text ,(regexp-opt '("comment" "text"))))))
 
   (setq-local treesit-thing-settings
 	      `((php
 		 (defun ,treesit-defun-type-regexp)
-		 ;;(sexp ,'(treesit-sexp-type-regexp))
+		 ;; (sexp ,  (regexp-opt
+		 ;; 	   '("definition"
+		 ;; 	     "qualifier"
+		 ;; 	     "type"
+		 ;; 	     "assignment"
+		 ;; 	     "expression"
+		 ;; 	     "literal"
+		 ;; 	     "string")))
 		 (sexp (not ,(eval-when-compile
 			       (rx (or "{" "}" "[" "]" "(" ")" ",")))))
-		 (sentence  ,treesit-sentence-type-regexp)
+		 (sentence  ,(regexp-opt
+			      '("break_statement"
+				"case_statement"
+				"continue_statement"
+				"declaration"
+				"default_statement"
+				"do_statement"
+				"expression_statement"
+				"for_statement"
+				"if_statement"
+				"return_statement"
+				"switch_statement"
+				"while_statement"
+				"statement")))
 		 (text ,(regexp-opt '("comment" "text"))))))
 
   ;; Nodes like struct/enum/union_specifier can appear in
@@ -1165,6 +1199,9 @@ Ie, NODE is not nested."
 	  (setq-local html-ts-parser (treesit-parser-create 'html)
 		      css-ts-parser (treesit-parser-create 'css)
 		      javascript-ts-parser (treesit-parser-create 'javascript))
+	  ;; (treesit-parser-create 'html)
+	  ;; (treesit-parser-create 'css)
+	  ;; (treesit-parser-create 'javascript)
 
 	  (setq-local treesit-range-settings
 		      (treesit-range-rules
@@ -1197,8 +1234,14 @@ Ie, NODE is not nested."
 	  (setq-local treesit-simple-indent-rules
 		      (append treesit-simple-indent-rules
 			      html-ts-mode--indent-rules
-			      `((javascript ((parent-is "program") php-ts-mode--js-css-tag-bol php-ts-mode-js-css-indent-offset) ,@(cdr (car js--treesit-indent-rules))))
-			      `((css ((parent-is "stylesheet") php-ts-mode--js-css-tag-bol php-ts-mode-js-css-indent-offset) ,@(cdr (car css--treesit-indent-rules))))))
+			      `((javascript ((parent-is "program")
+					     php-ts-mode--js-css-tag-bol
+					     php-ts-mode-js-css-indent-offset)
+					    ,@(cdr (car js--treesit-indent-rules))))
+			      `((css ((parent-is "stylesheet")
+				      php-ts-mode--js-css-tag-bol
+				      php-ts-mode-js-css-indent-offset)
+				     ,@(cdr (car css--treesit-indent-rules))))))
 
 	  (setq-local treesit-language-at-point-function #'php-ts-mode--language-at-point)
 
@@ -1216,7 +1259,7 @@ Ie, NODE is not nested."
 			(;; Javascript
 			 function
 			 argument bracket delimiter error function-call operator property))))
-      (warn "Tree-sitter for Html (with javascript and css) isn't available. HTML and/or Javascript and/or CSS syntax support isn't available to php-ts-mode. You could run `php-ts-mode-install-parser' to install the required parsers.")))
+      (warn "Tree-sitter for Html (with javascript and css) isn't available. HTML and/or Javascript and/or CSS syntax support isn't available to php-ts-mode. You could run `php-ts-mode-install-parsers' to install the required parsers.")))
 
   ;; Which-function.
   (setq-local which-func-functions (treesit-defun-at-point))
