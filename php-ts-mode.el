@@ -383,7 +383,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
   (let ((common
 	 `(((or (node-is "program")
 		(node-is "php_tag"))
-	    parent 0)
+	    parent-bol 0)
 
 	   (php-ts-mode--else-heuristic prev-line php-ts-mode-indent-offset)
 
