@@ -99,8 +99,9 @@ commit and/or use different parsers.")
   :safe 'integerp
   :group 'php-ts)
 
-(defcustom php-ts-mode-js-css-indent-offset 2
-  "Number of spaces for javascript and css relative to html tags."
+(defcustom php-ts-mode-js-css-indent-offset html-ts-mode-indent-offset
+  "JavaScript and CSS indent spaces related to the <script> and <style> html tags.
+By default, the value is the same as `html-ts-mode-indent-offset'"
   :tag "PHP javascript or css indent offset"
   :version "30.1"
   :type 'integer
@@ -406,6 +407,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 	   ((node-is "class_interface_clause") parent-bol php-ts-mode-indent-offset)
 	   ;;((query "(class_interface_clause (name) @indent)") parent-bol php-ts-mode-indent-offset)
 	   ((query "(class_interface_clause (name) @indent)") php-ts-mode--parent-eol 1)
+	   ((query "(class_interface_clause (qualified_name) @indent)") parent-bol php-ts-mode-indent-offset)
 	   ((parent-is "class_declaration") parent-bol 0)
 	   ((parent-is "function_definition") parent-bol 0)
 	   ((parent-is "member_call_expression") first-sibling php-ts-mode-indent-offset)
@@ -463,7 +465,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 	   )))
     `((psr2
        ((parent-is "function_call_expression") parent-bol php-ts-mode-indent-offset)
-       ((parent-is "array_creation_expression") parent 1)
+;;       ((parent-is "array_creation_expression") parent 1) ;; questa perchè l'ho messa qui?
        ,@common)
       (pear
        ((or (node-is "case_statement")
@@ -1050,7 +1052,7 @@ Ie, NODE is not nested."
       :help "Run inferior PHP process in a separate buffer"]
      ["Show interpreter buffer" php-ts-mode-show-process-buffer]
      ["Hide interpreter buffer" php-ts-mode-hide-process-buffer]
-     ["Kill Process" php-ts-mode-kill-process]
+     ["Kill interpreter process" php-ts-mode-kill-process]
      ["Evaluate buffer" php-ts-mode-send-buffer]
      ["Evaluate file" php-ts-mode-send-file]
      ["Evaluate region" php-ts-mode-send-region]
