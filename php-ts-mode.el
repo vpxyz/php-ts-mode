@@ -273,11 +273,27 @@ in this Emacs session."
   (interactive (list (php-ts-mode--prompt-for-style)))
   (php-ts-mode--indent-style-setter 'php-ts-mode-indent-style style))
 
-(defun php-ts-mode--set-indent-offset (style)
-  "Set the offset according to STYLE."
-  (if (eq style 'drupal)
-      (setq php-ts-mode-indent-offset 2)
-    (setq php-ts-mode-indent-offset 4)))
+(defun php-ts-mode--set-indent-property (style)
+  "Set the offset, tab, etc. according to STYLE."
+  (cl-case style
+    (psr2 (setq php-ts-mode-indent-offset 4
+		tab-width 4
+		indent-tabs-mode nil))
+    (pear (setq php-ts-mode-indent-offset 4
+		tab-width 4
+		indent-tabs-mode nil))
+    (drupal (setq php-ts-mode-indent-offset
+		  tab-width 2
+		  indent-tabs-mode nil))
+    (wordpress (setq php-ts-mode-indent-offset
+		     tab-width 2
+		     indent-tabs-mode t))
+    (symfony (setq php-ts-mode-indent-offset 4
+		   tab-width 4
+		   indent-tabs-mode nil))
+    (zend (setq php-ts-mode-indent-offset
+		tab-width 4
+		indent-tabs-mode nil))))
 
 (defun php-ts-mode-set-style (style)
   "Set the PHP indent style of the current buffer to STYLE.
@@ -287,8 +303,8 @@ To set the default indent style globally, use
   (interactive (list (php-ts-mode--prompt-for-style)))
   (if (not (derived-mode-p 'php-ts-mode))
       (user-error "The current buffer is not in `php-ts-mode'")
-    (php-ts-mode--set-indent-offset style)
     (setq-local php-ts-mode-indent-style style)
+    (php-ts-mode--set-indent-property style)
     (setq treesit-simple-indent-rules
 	  (treesit--indent-rules-optimize
 	   (php-ts-mode--get-indent-style)))))
@@ -465,7 +481,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 	   )))
     `((psr2
        ((parent-is "function_call_expression") parent-bol php-ts-mode-indent-offset)
-;;       ((parent-is "array_creation_expression") parent 1) ;; questa perchè l'ho messa qui?
+       ;;       ((parent-is "array_creation_expression") parent 1) ;; questa perchè l'ho messa qui?
        ,@common)
       (pear
        ((or (node-is "case_statement")
@@ -708,11 +724,15 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
   "A list of type and pseudotype names that can be used in PHPDoc.")
 
 (defconst php-ts-mode--phpdoc-tags
-  '("package" "param" "property" "property-read" "property-write"
-    "return" "throws" "var" "self-out" "this-out" "param-out"
-    "type" "extends" "require-extends" "implemtents" "require-implements"
-    "template" "template-covariant" "template-extends" "template-implements"
-    "assert" "assert-if-true" "assert-if-false" "if-this-is")
+  '("assert" "assert-if-true" "assert-if-false" "if-this-is" "ignore"
+    "category" "todo" "copyright" "subpackage" "example" "license"
+    "source" "use" "uses" "method" "deprecated" "since" "version"
+    "package" "param" "property" "property-read" "property-write"
+    "return" "throws" "var" "self-out" "this-out" "param-out" "template"
+    "template-covariant" "template-extends" "template-implements"
+    "template-use" "type" "extends" "require-extends" "implemtents"
+    "require-implements" "author" "inheritdoc" "inheritDoc" "api"
+    "filesource" "internal")
   "A list of tags specifying type names.")
 
 (defun php-ts-mode--font-lock-comment (node override start end &rest _)
@@ -827,7 +847,7 @@ For NODE, OVERRIDE, START, and END, see
 (defun php-ts-mode--html-language-at-point (point)
   "Return the language at POINT assuming the point is within a HTML region."
   (let* ((node (treesit-node-at point 'html))
-         (parent (treesit-node-parent node))
+	 (parent (treesit-node-parent node))
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
     (message "node-query = %s" node-query)
     (cond
@@ -1028,7 +1048,7 @@ Ie, NODE is not nested."
      :enable mark-active
      :help "Comment out the region between the mark and point"]
     ["Uncomment Region" (comment-region (region-beginning)
-                                        (region-end) '(4))
+					(region-end) '(4))
      :enable mark-active
      :help "Uncomment the region between the mark and point"]
     ["Indent Top-level Expression" php-ts-mode--indent-defun
@@ -1045,20 +1065,20 @@ Ie, NODE is not nested."
      ["Show Current Indentation Style"(message "Indentation Style: %s"
 					       php-ts-mode-indent-style)
       :help "Show the name of the C/C++ indentation style for current buffer"]
-    ["Set Comment Style" php-ts-mode-set-comment-style
+     ["Set Comment Style" php-ts-mode-set-comment-style
       :help "Choose PHP comment style between block and line comments"])
     "--"
-     ["Start interpreter" run-php
-      :help "Run inferior PHP process in a separate buffer"]
-     ["Show interpreter buffer" php-ts-mode-show-process-buffer]
-     ["Hide interpreter buffer" php-ts-mode-hide-process-buffer]
-     ["Kill interpreter process" php-ts-mode-kill-process]
-     ["Evaluate buffer" php-ts-mode-send-buffer]
-     ["Evaluate file" php-ts-mode-send-file]
-     ["Evaluate region" php-ts-mode-send-region]
+    ["Start interpreter" run-php
+     :help "Run inferior PHP process in a separate buffer"]
+    ["Show interpreter buffer" php-ts-mode-show-process-buffer]
+    ["Hide interpreter buffer" php-ts-mode-hide-process-buffer]
+    ["Kill interpreter process" php-ts-mode-kill-process]
+    ["Evaluate buffer" php-ts-mode-send-buffer]
+    ["Evaluate file" php-ts-mode-send-file]
+    ["Evaluate region" php-ts-mode-send-region]
     "--"
-     ["Start built-in webserver" php-ts-mode-run-php-webserver
-      :help "Run the built-in PHP webserver"]
+    ["Start built-in webserver" php-ts-mode-run-php-webserver
+     :help "Run the built-in PHP webserver"]
     "--"
     ["Customize" (lambda () (interactive) (customize-group "php-ts"))]))
 
@@ -1085,56 +1105,17 @@ Ie, NODE is not nested."
 
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
-
-  ;; now this variable is obsolete
-  ;; (setq-local treesit-sentence-type-regexp
-  ;; 	      ;; compound_statement makes us jump over too big units
-  ;; 	      ;; of code, so skip that one, and include the other
-  ;; 	      ;; statements.
-  ;; 	      (regexp-opt '("break_statement"
-  ;; 			    "case_statement"
-  ;; 			    "continue_statement"
-  ;; 			    "declaration"
-  ;; 			    "default_statement"
-  ;; 			    "do_statement"
-  ;; 			    "expression_statement"
-  ;; 			    "for_statement"
-  ;; 			    "if_statement"
-  ;; 			    "return_statement"
-  ;; 			    "switch_statement"
-  ;; 			    "while_statement"
-  ;; 			    "statement")))
-
-  ;; now this variable is obsolete
-  ;; (setq-local treesit-sexp-type-regexp
-  ;; 	      (regexp-opt '("definition"
-  ;; 			    "qualifier"
-  ;; 			    "type"
-  ;; 			    "assignment"
-  ;; 			    "expression"
-  ;; 			    "literal"
-  ;; 			    "string")))
-
-  ;; (setq-local treesit-thing-settings
-  ;; 	      `((php
-  ;; 		 (defun ,treesit-defun-type-regexp)
-  ;; 		 ;;(sexp ,'(treesit-sexp-type-regexp))
-  ;; 		 (sexp (not ,(eval-when-compile
-  ;; 			       (rx (or "{" "}" "[" "]" "(" ")" ",")))))
-  ;; 		 (sentence  ,treesit-sentence-type-regexp)
-  ;; 		 (text ,(regexp-opt '("comment" "text"))))))
-
   (setq-local treesit-thing-settings
 	      `((php
 		 (defun ,treesit-defun-type-regexp)
 		 ;; (sexp ,  (regexp-opt
-		 ;; 	   '("definition"
-		 ;; 	     "qualifier"
-		 ;; 	     "type"
-		 ;; 	     "assignment"
-		 ;; 	     "expression"
-		 ;; 	     "literal"
-		 ;; 	     "string")))
+		 ;;	   '("definition"
+		 ;;	     "qualifier"
+		 ;;	     "type"
+		 ;;	     "assignment"
+		 ;;	     "expression"
+		 ;;	     "literal"
+		 ;;	     "string")))
 		 (sexp (not ,(eval-when-compile
 			       (rx (or "{" "}" "[" "]" "(" ")" ",")))))
 		 (sentence  ,(regexp-opt
@@ -1158,9 +1139,7 @@ Ie, NODE is not nested."
   (setq-local treesit-defun-prefer-top-level t)
 
   ;; Indent.
-  ;; TODO: check php-mode.el:714
-  (when (eq php-ts-mode-indent-style 'default)
-    (setq-local indent-tabs-mode nil)) ;; TODO: check if needed for PHP
+  (setq-local indent-tabs-mode nil) ;; for Wordpress will be t
 
   (setq-local c-ts-common-indent-offset 'php-ts-mode-indent-offset)
   (setq-local treesit-simple-indent-rules (php-ts-mode--get-indent-style))
@@ -1291,8 +1270,8 @@ This is most pertinent to multi-line complex nodes such the embedded languages a
 (defun php-ts-mode-run-php-webserver (&optional port hostname document-root router num-of-workers)
   "Run the PHP Built-in web-server on a specified PORT.
 
-`PORT': Port number of built-in web server, default 3000.
-`HOSTNAME': Hostname or IP address of Built-in web server, default 'localhost'.
+`PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
+`HOSTNAME': Hostname or IP address of Built-in web server, default `php-ts-mode-ws-hostname'.
 `DOCUMENT-ROOT': Path to Document root, default is the current directory.
 `ROUTER': Path of the router PHP script,
 see `https://www.php.net/manual/en/features.commandline.webserver.php'
@@ -1309,7 +1288,8 @@ in order to test code that requires multiple concurrent requests to the built-in
 			      (php-ts-mode-ws-document-root php-ts-mode-ws-document-root)
 			      (t (read-string "Document-Root: " (file-name-directory (buffer-file-name))))))
 	 (host (format "%s:%d" hostname port))
-	 (buf-name (format "PHP web server on: %s" host))
+	 (name (format "PHP web server on: %s" host))
+	 (buf-name (format "*%s*" name))
 	 (args (delq
 		nil
 		(list "-S" host
@@ -1320,11 +1300,13 @@ in order to test code that requires multiple concurrent requests to the built-in
 		      ))))
     (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workes))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
-    (message "Run PHP built-in server with args %s" (string-join args " "))
-    (apply #'make-comint buf-name php-ts-mode-php-executable nil args)
+    (if (get-buffer buf-name)
+	(message "Switch to already running web server")
+      (message "Run PHP built-in web server with args %s" (string-join args " ")))
+    (apply #'make-comint name php-ts-mode-php-executable nil args)
     (funcall
      (if (called-interactively-p 'interactive) #'display-buffer #'get-buffer)
-     (format "*%s*" buf-name))))
+     buf-name)))
 
 (define-derived-mode inferior-php-ts-mode comint-mode "Inferior PHP"
   "Major mode for PHP inferior process."
