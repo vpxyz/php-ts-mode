@@ -849,7 +849,7 @@ For NODE, OVERRIDE, START, and END, see
   (let* ((node (treesit-node-at point 'html))
 	 (parent (treesit-node-parent node))
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
-    (message "node-query = %s" node-query)
+    ;;(message "node-query = %s" node-query)
     (cond
      ((string-equal "(script_element (raw_text))" node-query) 'javascript)
      ((string-equal "(style_element (raw_text))" node-query) 'css)
