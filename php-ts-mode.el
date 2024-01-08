@@ -282,16 +282,16 @@ in this Emacs session."
     (pear (setq php-ts-mode-indent-offset 4
 		tab-width 4
 		indent-tabs-mode nil))
-    (drupal (setq php-ts-mode-indent-offset
+    (drupal (setq php-ts-mode-indent-offset 2
 		  tab-width 2
 		  indent-tabs-mode nil))
-    (wordpress (setq php-ts-mode-indent-offset
+    (wordpress (setq php-ts-mode-indent-offset 2
 		     tab-width 2
 		     indent-tabs-mode t))
     (symfony (setq php-ts-mode-indent-offset 4
 		   tab-width 4
 		   indent-tabs-mode nil))
-    (zend (setq php-ts-mode-indent-offset
+    (zend (setq php-ts-mode-indent-offset 4
 		tab-width 4
 		indent-tabs-mode nil))))
 
@@ -786,12 +786,15 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					       (regexp-opt php-ts-mode--phpdoc-tags)
 					       "\\s-+"
 					       "\\("
-					       (eval-when-compile (rx (+ (? "?") (? "\\") (+ (in "0-9A-Z_a-z")) (? "[]") (? "|"))))
+					       (eval-when-compile (rx (+ (? "?") (? "\\") (+ (in "0-9A-Z_a-z")) (? "[]") (? "|") (? ".") (? "-"))))
 					       "\\)+")
 				       node-end t)
 	       ;;(message " mb-0 = %d, mb-end-0 = %d" (match-beginning 0)  (match-end 0))
 	       (treesit-fontify-with-override (match-beginning 0) (match-end 0)
 					      'font-lock-doc-markup-face
+					      override start end)
+	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
+					      'font-lock-constant-face
 					      override start end))
 	     (goto-char node-start)
 	     ;;(message "forth while")
