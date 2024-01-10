@@ -1301,7 +1301,7 @@ in order to test code that requires multiple concurrent requests to the built-in
 			    (php-ts-mode-ws-router php-ts-mode-ws-router)
 			    (t nil))
 		      ))))
-    (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workes))
+    (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workers))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
     (if (get-buffer buf-name)
 	(message "Switch to already running web server")
