@@ -146,7 +146,7 @@ If nil, then `php-ts-mode-run-php-webserver' will ask you for the port number."
 (defcustom php-ts-mode-ws-document-root nil
   "The root of the documents that the PHP built-in webserver will serve.
 If nil, then `php-ts-mode-run-php-webserver' will ask you for the document root."
-  :tag "PHP built-in web server port"
+  :tag "PHP built-in web server document root"
   :version "30.1"
   :type 'string
   :safe 'stringp
@@ -1261,9 +1261,11 @@ Ie, NODE is not nested."
 
 ;; TODO: I hope that in the future treesitter will be able to do this automatically.
 (defun php-ts-mode--parser-after-change (ranges parser)
-  "Make sure we re-syntax-propertize the full node in RANGES of a given PARSER that is being edited.
+  "Make sure we re-syntax-propertize the full node in RANGES of a
+  given PARSER that is being edited.
 
-This is most pertinent to multi-line complex nodes such the embedded languages and heredocs."
+This is most pertinent to multi-line complex nodes such the embedded
+languages and heredocs."
   (when ranges
     (with-current-buffer (treesit-parser-buffer parser)
       (syntax-ppss-flush-cache (cl-loop for r in ranges
@@ -1274,12 +1276,14 @@ This is most pertinent to multi-line complex nodes such the embedded languages a
   "Run the PHP Built-in web-server on a specified PORT.
 
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
-`HOSTNAME': Hostname or IP address of Built-in web server, default `php-ts-mode-ws-hostname'.
+`HOSTNAME': Hostname or IP address of Built-in web server,
+default `php-ts-mode-ws-hostname'.
 `DOCUMENT-ROOT': Path to Document root, default is the current directory.
 `ROUTER': Path of the router PHP script,
 see `https://www.php.net/manual/en/features.commandline.webserver.php'
-`NUM-OF-WORKERS': Before run the web server set the PHP_CLI_SERVER_WORKERS env variable
-in order to test code that requires multiple concurrent requests to the built-in webserver."
+`NUM-OF-WORKERS': Before run the web server set the
+PHP_CLI_SERVER_WORKERS env variable in order to test code that
+requires multiple concurrent requests to the built-in webserver."
   (interactive)
   (let* ((port (cond (port port)
 		     (php-ts-mode-ws-port php-ts-mode-ws-port)
