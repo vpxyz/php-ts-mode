@@ -235,9 +235,11 @@ follows the form of `treesit-simple-indent-rules'."
   :group 'php-ts)
 
 (defcustom php-ts-mode-disable-inject nil
-  "If true disable html/css/javascript injection."
+  "If true disable syntax hightlight of html/css/javascript injected languages."
+  :tag "Disable syntax highlight of html/css/javascript"
   :version "30.1"
-  :type '(boolean)
+  :type 'boolean
+  :safe 'booleanp
   :group 'php-ts)
 
 ;;; Utils
@@ -809,12 +811,17 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 					      override start end))
 	     ;;(message "fifth while")
 	     (goto-char node-start)
-	     ;; "@foo ..." markup.
-	     (while (re-search-forward "\\(@[[:alpha:]][-[:alpha:]\\]*\\)" node-end t)
+	     ;; "@foo ... or @foo(...) ..." markup.
+	     (while (re-search-forward "\\(@[[:alpha:]][-[:alpha:]\\]*\\)\\(([a-zA-0]+=[a-zA-0]+)\\)*" node-end t)
 	       ;;(message "test mb-1 = %d, mb-end-1 = %d" (match-beginning 1)  (match-end 1))
 	       (treesit-fontify-with-override (match-beginning 1) (match-end 1)
 					      'font-lock-doc-markup-face
-					      override start end))
+					      override start end)
+	       (when (match-beginning 2)
+		 (treesit-fontify-with-override (match-beginning 2) (match-end 2)
+						'font-lock-property-use-face
+						override start end))
+	       )
 	     ;;(goto-char node-start)
 	     ;;	;; HTML tags.
 	     ;; (while (re-search-forward (concat "</?\\sw"
