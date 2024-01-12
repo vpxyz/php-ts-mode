@@ -172,6 +172,7 @@ In order to test code, for e.g. , that requires multiple concurrent requests."
 
 (defcustom php-ts-mode-inferior-buffer "*PHP*"
   "Name of the inferior PHP buffer."
+  :tag "PHP inferior process buffer name"
   :type 'string
   :safe 'stringp
   :group 'php-ts
@@ -179,6 +180,7 @@ In order to test code, for e.g. , that requires multiple concurrent requests."
 
 (defcustom php-ts-mode-inferior-history nil
   "File used to save command history of the inferior PHP process."
+  :tag "PHP inferior process history file."
   :type '(choice (const :tag "None" nil) file)
   :safe 'string-or-null-p
   :group 'php-ts
