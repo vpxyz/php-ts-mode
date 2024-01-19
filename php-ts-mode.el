@@ -1328,63 +1328,58 @@ requires multiple concurrent requests to the built-in webserver."
   "Major mode for PHP inferior process."
   :group 'php-ts
   (setq-local mode-line-process '(":%s")
-	      comint-input-ignoredups t
+	      ;;comint-input-ignoredups t
 	      comint-highlight-input nil
 	      comint-input-ring-file-name php-ts-mode-inferior-history
+	      ;;comint-process-echoes t
 	      comint-prompt-read-only t
-	      comint-prompt-regexp nil
-	      comint-output-filter-functions '(ansi-color-process-output
-					       comint-watch-for-password-prompt)
+	      comint-use-prompt-regexp t
+	      comint-prompt-regexp "^php > "
+	      comint-output-filter-functions '(ansi-color-process-output)
 	      scroll-conservatively 1)
   (comint-read-input-ring t))
 
 ;;;###autoload
-(defun inferior-php ()
+(defun run-php ()
   "Runs a PHP interpreter as a subprocess of Emacs, with PHP
 I/O through an Emacs buffer.  Variables `php-ts-mode-php-executable'
 and `php-ts-mode-php-config' control which PHP interpreter is run."
   (interactive)
   (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer)))
-    (pop-to-buffer buffer)
     (unless (comint-check-proc buffer)
       (with-current-buffer buffer
 	(inferior-php-ts-mode-startup)
 	(inferior-php-ts-mode)))
-    buffer))
-
-;;;###autoload
-(defalias 'run-php 'inferior-php)
+    (when buffer
+      (pop-to-buffer buffer))))
 
 (defvar php-ts-mode--inferior-php-process nil
   "The PHP inferior process associated to `php-ts-mode-inferior-buffer'.")
 
 (defun inferior-php-ts-mode-startup ()
   "Start an inferior PHP process."
-  (setq php-ts-mode--inferior-php-process
-	(apply #'make-comint-in-buffer
-	       (string-replace "*" "" php-ts-mode-inferior-buffer)
-	       php-ts-mode-inferior-buffer
-	       php-ts-mode-php-executable
-	       nil
-	       (delq
-		nil
-		(list
-		 (when php-ts-mode-php-config
-		   (format "-c %s" php-ts-mode-php-config))
-		 "-a"))))
+  (setq-local php-ts-mode--inferior-php-process
+	      (apply #'make-comint-in-buffer
+		     (string-replace "*" "" php-ts-mode-inferior-buffer)
+		     php-ts-mode-inferior-buffer
+		     php-ts-mode-php-executable
+		     nil
+		     (delq
+		      nil
+		      (list
+		       (when php-ts-mode-php-config
+			 (format "-c %s" php-ts-mode-php-config))
+		       "-a"))))
   (add-hook 'comint-preoutput-filter-functions
 	    (lambda (string)
-	      ;; check for if prompt continue
-	      (if (or (string= string "php { ") (string= string "php > "))
+	      (if (member string '("php > " "php { " "/*  > "))
 		  string
 		(concat
-		 ;; Filter out the extra prompt characters that
-		 ;; accumulate in the output when sending regions
-		 ;; to the inferior process.
-		 (string-trim (replace-regexp-in-string
-			       "\\(?:php [\">{]\\)+\\|\\(?:/\\*  >\\)+"
-			       ""
-			       string))
+		 (string-trim-right
+		  (replace-regexp-in-string 
+		   "\\(?:php [\">{] \\)+\\|\\(?:/\\*  > \\)+"
+		   ""
+		   string))
 		 ;; Re-add the prompt for the next line.
 		 "\nphp > ")))
 	    nil t)
@@ -1404,9 +1399,8 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 (defun php-ts-mode-send-region (beg end)
   "Send region between BEG and END to the inferior PHP process."
   (interactive "r")
-  (let ((string (buffer-substring-no-properties beg end))
-	(proc-buffer php-ts-mode--inferior-php-process))
-    (comint-send-string proc-buffer string)))
+  (when-let* ((buffer-live-p php-ts-mode--inferior-php-process))
+    (comint-send-region php-ts-mode--inferior-php-process beg end)))
 
 (defun php-ts-mode-send-buffer ()
   "Send current buffer to the inferior PHP process."
