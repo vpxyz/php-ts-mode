@@ -1405,14 +1405,18 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 (defun php-ts-mode-send-buffer ()
   "Send current buffer to the inferior PHP process."
   (interactive)
-  (php-ts-mode-send-region (point-min) (point-max)))
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward "<?php" nil t)
+    (php-ts-mode-send-region (point) (point-max))))
 
 (defun php-ts-mode-send-file (file)
   "Send contents of FILE to the inferior PHP process."
   (interactive "f")
   (with-temp-buffer
     (insert-file-contents-literally file)
-    (php-ts-mode-send-region (point-min) (point-max))))
+    (search-forward "<?php" nil t)
+    (php-ts-mode-send-region (point) (point-max))))
 
 (defun php-ts-mode-show-process-buffer ()
   "Show the inferior PHP process buffer."
