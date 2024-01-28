@@ -1110,7 +1110,6 @@ Ie, NODE is not nested."
   (when (not php-ts-mode-disable-inject)
     (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
 	(progn
-	  (treesit-parser-create 'phpdoc)
 	  (treesit-parser-create 'html)
 	  (treesit-parser-create 'css)
 	  (treesit-parser-create 'javascript)
