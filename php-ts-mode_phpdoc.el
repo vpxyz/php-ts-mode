@@ -321,11 +321,12 @@ To set the default indent style globally, use
 `php-ts-mode' use 4 parsers, this function returns, for the
 current buffer, the ranges covered by each parser.
 Usefull for debugging."
-  (let ((ranges))
-    (if (not (treesit-parser-list))
+  (let ((ranges)
+	(parsers (treesit-parser-list nil nil t)))
+    (if (not parsers)
 	(message "At least one parser must be initialized"))
     (cl-loop
-     for parser in (treesit-parser-list)
+     for parser in parsers
      do (push (list parser (treesit-parser-included-ranges parser)) ranges)
      finally return ranges)))
 
@@ -1152,7 +1153,7 @@ Ie, NODE is not nested."
 	  ;; come sopra per l'indentazione
 	  (setq-local treesit-simple-indent-rules
 		      (append treesit-simple-indent-rules
-			      php-ts-mode--phpdoc-indent-styles
+;;			      php-ts-mode--phpdoc-indent-styles
 			      html-ts-mode--indent-rules
 			      `((javascript ((parent-is "program")
 					     php-ts-mode--js-css-tag-bol
@@ -1336,14 +1337,18 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 (defun php-ts-mode-send-buffer ()
   "Send current buffer to the inferior PHP process."
   (interactive)
-  (php-ts-mode-send-region (point-min) (point-max)))
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward "<?php" nil t)
+    (php-ts-mode-send-region (point) (point-max))))
 
 (defun php-ts-mode-send-file (file)
   "Send contents of FILE to the inferior PHP process."
   (interactive "f")
   (with-temp-buffer
     (insert-file-contents-literally file)
-    (php-ts-mode-send-region (point-min) (point-max))))
+    (search-forward "<?php" nil t)
+    (php-ts-mode-send-region (point) (point-max))))
 
 (defun php-ts-mode-show-process-buffer ()
   "Show the inferior PHP process buffer."
