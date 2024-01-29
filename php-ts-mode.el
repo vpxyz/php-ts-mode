@@ -319,11 +319,12 @@ To set the default indent style globally, use
 `php-ts-mode' use 4 parsers, this function returns, for the
 current buffer, the ranges covered by each parser.
 Usefull for debugging."
-  (let ((ranges))
-    (if (not (treesit-parser-list))
+  (let ((ranges)
+	(parsers (treesit-parser-list nil nil t)))
+    (if (not parsers)
 	(message "At least one parser must be initialized"))
     (cl-loop
-     for parser in (treesit-parser-list)
+     for parser in parsers
      do (push (list parser (treesit-parser-included-ranges parser)) ranges)
      finally return ranges)))
 
