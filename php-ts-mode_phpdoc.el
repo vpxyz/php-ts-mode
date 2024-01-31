@@ -1196,21 +1196,7 @@ Ie, NODE is not nested."
   ;; should be the last one
   (setq-local php-ts-parser (treesit-parser-create 'php))
   (treesit-font-lock-recompute-features)
-  (treesit-major-mode-setup)
-  (treesit-parser-add-notifier (car (treesit-parser-list))
-			       #'php-ts-mode--parser-after-change))
-
-;; TODO: I hope that in the future treesitter will be able to do this automatically.
-(defun php-ts-mode--parser-after-change (ranges parser)
-  "Make sure we re-syntax-propertize the full node in RANGES of a
-  given PARSER that is being edited.
-
-This is most pertinent to multi-line complex nodes such the embedded
-languages and heredocs."
-  (when ranges
-    (with-current-buffer (treesit-parser-buffer parser)
-      (syntax-ppss-flush-cache (cl-loop for r in ranges
-					minimize (car r))))))
+  (treesit-major-mode-setup))
 
 ;;;###autoload
 (defun php-ts-mode-run-php-webserver (&optional port hostname document-root router num-of-workers)
