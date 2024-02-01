@@ -716,9 +716,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (c-ts-common-comment-2nd-line-matcher
       c-ts-common-comment-2nd-line-anchor
       1)
-     ((parent-is "document") prev-adaptive-prefix 0)
-     ;;     ((node-is "document") column-0 php-ts-mode-indent-offset)
-     ))
+     ((parent-is "document") prev-adaptive-prefix 0)))
   "Tree-sitter indentation rules for for `phpdoc'.")
 
 ;;; Font-lock helpers
@@ -1153,7 +1151,7 @@ Ie, NODE is not nested."
 	  ;; come sopra per l'indentazione
 	  (setq-local treesit-simple-indent-rules
 		      (append treesit-simple-indent-rules
-;;			      php-ts-mode--phpdoc-indent-styles
+			      php-ts-mode--phpdoc-indent-styles
 			      html-ts-mode--indent-rules
 			      `((javascript ((parent-is "program")
 					     php-ts-mode--js-css-tag-bol
