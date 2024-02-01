@@ -732,7 +732,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    :language 'phpdoc
    :feature 'type
    :override t
-   '((type_list
+   '((union_type
       [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face))
 
    :language 'phpdoc
