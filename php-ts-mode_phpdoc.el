@@ -716,7 +716,9 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (c-ts-common-comment-2nd-line-matcher
       c-ts-common-comment-2nd-line-anchor
       1)
-     ((parent-is "document") prev-adaptive-prefix 0)))
+     ;; some node dosen't have "document" as a parent
+     ;; for e.g "description"
+     (catch-all prev-adaptive-prefix 0)))
   "Tree-sitter indentation rules for for `phpdoc'.")
 
 ;;; Font-lock helpers

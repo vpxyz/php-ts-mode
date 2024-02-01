@@ -1190,12 +1190,9 @@ Ie, NODE is not nested."
   (when (not php-ts-mode-disable-inject)
     (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
 	(progn
-	  (setq-local html-ts-parser (treesit-parser-create 'html)
-		      css-ts-parser (treesit-parser-create 'css)
-		      javascript-ts-parser (treesit-parser-create 'javascript))
-	  ;; (treesit-parser-create 'html)
-	  ;; (treesit-parser-create 'css)
-	  ;; (treesit-parser-create 'javascript)
+	  (treesit-parser-create 'html)
+	  (treesit-parser-create 'css)
+	  (treesit-parser-create 'javascript)
 
 	  (setq-local treesit-range-settings
 		      (treesit-range-rules
@@ -1253,7 +1250,10 @@ Ie, NODE is not nested."
 			(;; Javascript
 			 function
 			 argument bracket delimiter error function-call operator property))))
-      (warn "Tree-sitter for Html (with javascript and css) isn't available. HTML and/or Javascript and/or CSS syntax support isn't available to php-ts-mode. You could run `php-ts-mode-install-parsers' to install the required parsers.")))
+      (warn "Tree-sitter for Html (with javascript and css) isn't
+      available. HTML and/or Javascript and/or CSS syntax support
+      isn't available to php-ts-mode. You could run
+      `php-ts-mode-install-parsers' to install the required parsers.")))
 
   ;; Which-function.
   (setq-local which-func-functions (treesit-defun-at-point))
@@ -1421,11 +1421,10 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
   (with-current-buffer php-ts-mode-inferior-buffer
     (kill-buffer-and-window)))
 
-(if (treesit-ready-p 'php)
-    (progn
+(when (treesit-ready-p 'php)
       (add-to-list 'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
       (add-to-list 'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
-      (add-to-list 'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode))))
+      (add-to-list 'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
 
 (provide 'php-ts-mode)
 
