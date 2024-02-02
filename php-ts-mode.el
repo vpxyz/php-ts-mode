@@ -590,7 +590,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (member_access_expression
       name: (_) @font-lock-variable-name-face)
      (scoped_property_access_expression
-      scope: (name) @font-lock-constant-face))
+      scope: (name) @font-lock-constant-face)
+     (error_suppression_expression (name) @font-lock-variable-name-face))
 
    :language 'php
    :feature 'string
@@ -617,7 +618,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (intersection_type) @font-lock-type-face
      (primitive_type) @font-lock-type-face
      (cast_type) @font-lock-type-face
-     (named_type) @font-lock-type-face)
+     (named_type) @font-lock-type-face
+     (optional_type) @font-lock-type-face)
 
    :language 'php
    :feature 'definition

@@ -589,7 +589,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (member_access_expression
       name: (_) @font-lock-variable-name-face)
      (scoped_property_access_expression
-      scope: (name) @font-lock-constant-face))
+      scope: (name) @font-lock-constant-face)
+     (error_suppression_expression (name) @font-lock-variable-name-face))
 
    :language 'php
    :feature 'string
@@ -616,7 +617,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
      (intersection_type) @font-lock-type-face
      (primitive_type) @font-lock-type-face
      (cast_type) @font-lock-type-face
-     (named_type) @font-lock-type-face)
+     (named_type) @font-lock-type-face
+     (optional_type) @font-lock-type-face)
 
    :language 'php
    :feature 'definition
@@ -733,7 +735,8 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    :feature 'type
    :override t
    '((union_type
-      [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face))
+      [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face)
+     ([(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face))
 
    :language 'phpdoc
    :feature 'attribute
@@ -788,7 +791,7 @@ For NODE, OVERRIDE, START, and END, see
   (let* ((node (treesit-node-at point 'html))
          (parent (treesit-node-parent node))
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
-    (message "node-query = %s" node-query)
+    ;;(message "node-query = %s" node-query)
     (cond
      ((string-equal "(script_element (raw_text))" node-query) 'javascript)
      ((string-equal "(style_element (raw_text))" node-query) 'css)
@@ -800,7 +803,7 @@ For NODE, OVERRIDE, START, and END, see
 	 (node-type (treesit-node-type node))
 	 (parent (treesit-node-parent node))
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) node-type)))
-    (message "language-at-point node-type %s" node-type)
+    ;;(message "language-at-point node-type %s" node-type)
     (save-excursion
       (goto-char (treesit-node-start node))
       (cond ((and (string= "comment" node-type) (looking-at-p "/\\*\\*")) 'phpdoc)
@@ -1027,6 +1030,7 @@ Ie, NODE is not nested."
     php-ts-mode-install-parsers"))
 
   ;;(setq-local treesit--font-lock-verbose t)
+  (setq-local treesit--indent-verbose t)
   
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
@@ -1184,7 +1188,10 @@ Ie, NODE is not nested."
 			(;; Javascript
 			 function
 			 argument bracket delimiter error function-call operator property))))
-      (warn "Tree-sitter for Html (with javascript and css) isn't available. HTML and/or Javascript and/or CSS syntax support isn't available to php-ts-mode. You could run `php-ts-mode-install-parsers' to install the required parsers.")))
+      (warn "Tree-sitter for Html (with javascript and css) isn't
+      available. HTML and/or Javascript and/or CSS syntax support
+      isn't available to php-ts-mode. You could run
+      `php-ts-mode-install-parsers' to install the required parsers.")))
 
   ;; Which-function.
   (setq-local which-func-functions (treesit-defun-at-point))
@@ -1352,11 +1359,13 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
   (with-current-buffer php-ts-mode-inferior-buffer
     (kill-buffer-and-window)))
 
-(if (treesit-ready-p 'php)
-    (progn
-      (add-to-list 'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
-      (add-to-list 'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
-      (add-to-list 'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode))))
+(when (treesit-ready-p 'php)
+      (add-to-list
+       'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
+      (add-to-list
+       'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
+      (add-to-list
+       'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
 
 (provide 'php-ts-mode)
 
