@@ -350,6 +350,7 @@ Usefull for debugging."
     (modify-syntax-entry ?\n "> b"    table)
     (modify-syntax-entry ?\^m "> b"   table)
     ;; php specific syntax
+    (modify-syntax-entry ?_  "w"      table)
     (modify-syntax-entry ?`  "\""     table)
     (modify-syntax-entry ?\" "\""     table)
     (modify-syntax-entry ?\r "> b"    table)
@@ -889,11 +890,12 @@ For NODE, OVERRIDE, START, and END, see
    (lambda (n)
      (member (treesit-node-type n)
 	     '("class_declaration"
-	       "trait_declaration"
-	       "interface_declaration"
 	       "enum_declaration"
 	       "function_definition"
-	       "method_declaration")))))
+	       "interface_declaration"
+	       "method_declaration"
+	       "namespace_definition"
+	       "trait_declaration")))))
 
 (defun php-ts-mode--defun-name-separator (node)
   "Return a separator to connect object name, based on NODE type."
@@ -998,6 +1000,7 @@ Ie, NODE is not nested."
    :override t
    :feature 'comment
    `((comment) @font-lock-comment-face
+     ;; handle shebang path and others type of comment
      (fragment (text) @font-lock-comment-face))
 
    :language 'html
@@ -1111,12 +1114,13 @@ Ie, NODE is not nested."
 
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
-	      (regexp-opt '("function_definition"
-			    "method_declaration"
-			    "class_declaration"
+	      (regexp-opt '("class_declaration"
+			    "enum_declaration"
+			    "function_definition"
 			    "interface_declaration"
-			    "trait_declaration"
-			    "enum_declaration")))
+			    "method_declaration"
+			    "namespace_definition"
+			    "trait_declaration")))
 
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
@@ -1171,12 +1175,14 @@ Ie, NODE is not nested."
 
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
-	      '(("Enum" "\\`enum_declaration\\'" nil nil)
-		("Variable" "\\`variable_name\\'" nil nil)
-		("Class" "\\`class_declaration\\'" nil nil)
+	      '(("Class" "\\`class_declaration\\'" nil nil)
+		("Enum" "\\`enum_declaration\\'" nil nil)
 		("Function" "\\`function_definition\\'" nil nil)
+		("Interface" "\\`interface_declaration\\'" nil nil)
 		("Method" "\\`method_declaration\\'" nil nil)
-		("Trait" "\\`trait_declaration\\'" nil nil)))
+		("Namespace" "\\`namespace_definition\\'" nil nil)
+		("Trait" "\\`trait_declaration\\'" nil nil)
+		("Variable" "\\`variable_name\\'" nil nil)))
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
@@ -1424,9 +1430,12 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
     (kill-buffer-and-window)))
 
 (when (treesit-ready-p 'php)
-      (add-to-list 'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
-      (add-to-list 'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
-      (add-to-list 'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
+      (add-to-list
+       'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
+      (add-to-list
+       'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
+      (add-to-list
+       'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
 
 (provide 'php-ts-mode)
 

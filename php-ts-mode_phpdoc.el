@@ -352,6 +352,7 @@ Usefull for debugging."
     (modify-syntax-entry ?\n "> b"    table)
     (modify-syntax-entry ?\^m "> b"   table)
     ;; php specific syntax
+    (modify-syntax-entry ?_  "w"      table)
     (modify-syntax-entry ?`  "\""     table)
     (modify-syntax-entry ?\" "\""     table)
     (modify-syntax-entry ?\r "> b"    table)
@@ -711,7 +712,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    ;;'((ERROR) @font-lock-warning-face)
    '((ERROR) @php-ts-mode--fontify-error)))
 
-(defvar php-ts-mode--phpdoc-indent-styles
+(defvar php-ts-mode--phpdoc-indent-rules
   '((phpdoc
      ((and (parent-is "document") c-ts-common-looking-at-star)
       c-ts-common-comment-start-after-first-star -1)
@@ -736,14 +737,18 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    :override t
    '((union_type
       [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face)
-     ([(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face))
+     ;; (intersection_type
+     ;;  [(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face)
+     ([(array_type) (primitive_type) (named_type) (optional_type)] @font-lock-type-face)
+     (fqsen (name) @font-lock-function-name-face))
 
    :language 'phpdoc
    :feature 'attribute
    :override t
    '((tag_name) @font-lock-constant-face
      (tag
-      [(version) (email_address)] @font-lock-doc-markup-face))
+      [(version) (email_address)] @font-lock-doc-markup-face)
+     (tag (author_name) @font-lock-property-name-face))
 
    :language 'phpdoc
    :feature 'variable
@@ -821,11 +826,12 @@ For NODE, OVERRIDE, START, and END, see
    (lambda (n)
      (member (treesit-node-type n)
 	     '("class_declaration"
-	       "trait_declaration"
-	       "interface_declaration"
 	       "enum_declaration"
 	       "function_definition"
-	       "method_declaration")))))
+	       "interface_declaration"
+	       "method_declaration"
+	       "namespace_definition"
+	       "trait_declaration")))))
 
 (defun php-ts-mode--defun-name-separator (node)
   "Return a separator to connect object name, based on NODE type."
@@ -864,6 +870,7 @@ Return nil if there is no name or if NODE is not a defun node."
       (class_declaration (treesit-node-text child t))
       (trait_declaration (treesit-node-text child t))
       (interface_declaration (treesit-node-text child t))
+      (namespace_definition (treesit-node-text child t))
       (enum_declaration (treesit-node-text child t))
       (function_definition (treesit-node-text child t))
       (method_declaration
@@ -930,6 +937,7 @@ Ie, NODE is not nested."
    :override t
    :feature 'comment
    `((comment) @font-lock-comment-face
+     ;; handle shebang path and others type of comment
      (fragment (text) @font-lock-comment-face))
 
    :language 'html
@@ -1034,12 +1042,13 @@ Ie, NODE is not nested."
   
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
-	      (regexp-opt '("function_definition"
-			    "method_declaration"
-			    "class_declaration"
+	      (regexp-opt '("class_declaration"
+			    "enum_declaration"
+			    "function_definition"
 			    "interface_declaration"
-			    "trait_declaration"
-			    "enum_declaration")))
+			    "method_declaration"
+			    "namespace_definition"
+			    "trait_declaration")))
 
   (setq-local treesit-defun-name-function #'php-ts-mode--defun-name)
 
@@ -1094,12 +1103,14 @@ Ie, NODE is not nested."
 
   ;; Imenu.
   (setq-local treesit-simple-imenu-settings
-	      '(("Enum" "\\`enum_declaration\\'" nil nil)
-		("Variable" "\\`variable_name\\'" nil nil)
-		("Class" "\\`class_declaration\\'" nil nil)
+	      '(("Class" "\\`class_declaration\\'" nil nil)
+		("Enum" "\\`enum_declaration\\'" nil nil)
 		("Function" "\\`function_definition\\'" nil nil)
+		("Interface" "\\`interface_declaration\\'" nil nil)
 		("Method" "\\`method_declaration\\'" nil nil)
-		("Trait" "\\`trait_declaration\\'" nil nil)))
+		("Namespace" "\\`namespace_definition\\'" nil nil)
+		("Trait" "\\`trait_declaration\\'" nil nil)
+		("Variable" "\\`variable_name\\'" nil nil)))
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
@@ -1113,7 +1124,7 @@ Ie, NODE is not nested."
 
   ;; Embed html, if possible
   (when (not php-ts-mode-disable-inject)
-    (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css))
+    (if (and (treesit-ready-p 'html) (treesit-ready-p 'javascript) (treesit-ready-p 'css) (treesit-ready-p 'phpdoc))
 	(progn
 	  (treesit-parser-create 'html)
 	  (treesit-parser-create 'css)
@@ -1151,14 +1162,15 @@ Ie, NODE is not nested."
 			      php-ts-mode--custom-html-font-lock-settings
 			      js--treesit-font-lock-settings
 			      css--treesit-settings
-			      php-ts-mode--phpdoc-font-lock-settings
-			      ))
+			      php-ts-mode--phpdoc-font-lock-settings))
 
-	  ;; come sopra per l'indentazione
 	  (setq-local treesit-simple-indent-rules
 		      (append treesit-simple-indent-rules
-			      php-ts-mode--phpdoc-indent-styles
+			      php-ts-mode--phpdoc-indent-rules
 			      html-ts-mode--indent-rules
+			      ;; Extended rules for js and css, to
+			      ;; indent appropriately when injected
+			      ;; into html
 			      `((javascript ((parent-is "program")
 					     php-ts-mode--js-css-tag-bol
 					     php-ts-mode-js-css-indent-offset)
