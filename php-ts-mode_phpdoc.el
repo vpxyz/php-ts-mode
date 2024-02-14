@@ -335,7 +335,6 @@ Usefull for debugging."
 (defvar php-ts-mode--syntax-table
   (let ((table (make-syntax-table)))
     ;; Taken from the cc-langs version
-    (modify-syntax-entry ?_  "_"      table)
     (modify-syntax-entry ?\\ "\\"     table)
     (modify-syntax-entry ?+  "."      table)
     (modify-syntax-entry ?-  "."      table)
@@ -535,6 +534,29 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
     "%" "->" "?->")
   "PHP operators for tree-sitter font-locking.")
 
+(defconst php-ts-mode--predefined-constant
+  '(;; predefined constant
+    "PHP_VERSION" "PHP_MAJOR_VERSION" "PHP_MINOR_VERSION"
+    "PHP_RELEASE_VERSION" "PHP_VERSION_ID" "PHP_EXTRA_VERSION"
+    "ZEND_THREAD_SAFE" "ZEND_DEBUG_BUILD" "PHP_ZTS" "PHP_DEBUG"
+    "PHP_MAXPATHLEN" "PHP_OS" "PHP_OS_FAMILY" "PHP_SAPI" "PHP_EOL"
+    "PHP_INT_MAX" "PHP_INT_MIN" "PHP_INT_SIZE" "PHP_FLOAT_DIG"
+    "PHP_FLOAT_EPSILON" "PHP_FLOAT_MIN" "PHP_FLOAT_MAX"
+    "PHP_WINDOWS_EVENT_CTRL_C" "PHP_WINDOWS_EVENT_CTRL_BREAK"
+    "DEFAULT_INCLUDE_PATH" "PEAR_INSTALL_DIR" "PEAR_EXTENSION_DIR"
+    "PHP_EXTENSION_DIR" "PHP_PREFIX" "PHP_BINDIR" "PHP_BINARY"
+    "PHP_MANDIR" "PHP_LIBDIR" "PHP_DATADIR" "PHP_SYSCONFDIR"
+    "PHP_LOCALSTATEDIR" "PHP_CONFIG_FILE_PATH" "PHP_CONFIG_FILE_SCAN_DIR"
+    "PHP_SHLIB_SUFFIX" "PHP_FD_SETSIZE" "E_ERROR" "E_WARNING" "E_PARSE"
+    "E_NOTICE" "E_CORE_ERROR" "E_CORE_WARNING" "E_COMPILE_ERROR"
+    "E_COMPILE_WARNING" "E_USER_ERROR" "E_USER_WARNING"
+    "E_USER_NOTICE" "E_USER_NOTICE" "E_DEPRECATED" "E_USER_DEPRECATED"
+    "E_ALL" "E_STRICT"
+    ;; magic constant
+    "__COMPILER_HALT_OFFSET__" "__CLASS__" "__DIR__" "__FILE__"
+    "__FUNCTION__" "__LINE__" "__METHOD__" "__NAMESPACE__" "__TRAIT__")
+  "PHP predefined constant.")
+
 (defun php-ts-mode--font-lock-settings ()
   "Tree-sitter font-lock settings."
   (treesit-font-lock-rules
@@ -553,14 +575,18 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 
    :language 'php
    :feature 'constant
-   '((boolean) @font-lock-constant-face
+   `((boolean) @font-lock-constant-face
      (float) @font-lock-constant-face
      (integer) @font-lock-constant-face
      (null) @font-lock-constant-face
-     ((name) @font-lock-constant-face
-      (:match "^_?[A-Z][A-Z%d_]*$" @font-lock-constant-face))
+     ;; predefined constant or built in constant
      ((name) @font-lock-builtin-face
-      (:match "^__[A-Z]*__" @font-lock-builtin-face))
+      (:match ,(rx-to-string
+		`(: bos (or ,@php-ts-mode--predefined-constant) eos))
+	      @font-lock-builtin-face))
+     ;; user defined constant
+     ((name) @font-lock-constant-face
+      (:match "_?[A-Z][0-9A-Z_]+" @font-lock-constant-face))
      (const_declaration
       (const_element (name) @font-lock-constant-face))
      (relative_scope "self") @font-lock-builtin-face)
@@ -615,7 +641,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
    :override t
    '((union_type) @font-lock-type-face
      (bottom_type) @font-lock-type-face
-     (intersection_type) @font-lock-type-face
+     ;;(intersection_type) @font-lock-type-face
      (primitive_type) @font-lock-type-face
      (cast_type) @font-lock-type-face
      (named_type) @font-lock-type-face
