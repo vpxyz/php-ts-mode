@@ -964,7 +964,7 @@ Ie, NODE is not nested."
    :feature 'comment
    `((comment) @font-lock-comment-face
      ;; handle shebang path and others type of comment
-     (fragment (text) @font-lock-comment-face))
+     (document (text) @font-lock-comment-face))
 
    :language 'html
    :override t
