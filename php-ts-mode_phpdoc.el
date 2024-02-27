@@ -820,14 +820,14 @@ For NODE, OVERRIDE, START, and END, see
 (defun php-ts-mode--html-language-at-point (point)
   "Return the language at POINT assuming the point is within a HTML region."
   (let* ((node (treesit-node-at point 'html))
-         (parent (treesit-node-parent node))
+	 (parent (treesit-node-parent node))
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) (treesit-node-type node))))
     ;;(message "node-query = %s" node-query)
     (cond
      ((string-equal "(script_element (raw_text))" node-query) 'javascript)
      ((string-equal "(style_element (raw_text))" node-query) 'css)
      (t 'html))))
-  
+
 (defun php-ts-mode--language-at-point (point)
   "Return the language at POINT."
   (let* ((node (treesit-node-at point 'php))
@@ -839,7 +839,7 @@ For NODE, OVERRIDE, START, and END, see
       (goto-char (treesit-node-start node))
       (cond ((and (string= "comment" node-type) (looking-at-p "/\\*\\*")) 'phpdoc)
 	    ((not (member node-query '("(program (text))"
-     				       "(text_interpolation (text))")))
+				       "(text_interpolation (text))")))
 	     'php)
 	    (t (php-ts-mode--html-language-at-point point))))))
 
@@ -926,13 +926,13 @@ Derived from `c-ts-common-comment-setup'."
   (setq-local c-ts-common--comment-regexp "comment")
   (setq-local comment-start "// ")
   (setq-local comment-style 'extra-line)
-  (setq-local comment-continue "* ")
+  (setq-local comment-continue " * ")
   (setq-local comment-start-skip
 	      (eval-when-compile
 		(rx (group (or (: "#" (not (any "[")))
 			       (: "/" (+ "/"))
-			       (: "/*"))
-			   (* (syntax whitespace))))))
+			       (: "/*")))
+		    (* (syntax whitespace)))))
   (setq-local comment-end ""))
 
 ;;; Defun navigation
@@ -1017,7 +1017,7 @@ Ie, NODE is not nested."
      :enable mark-active
      :help "Comment out the region between the mark and point"]
     ["Uncomment Region" (comment-region (region-beginning)
-                                        (region-end) '(4))
+					(region-end) '(4))
      :enable mark-active
      :help "Uncomment the region between the mark and point"]
     ["Indent Top-level Expression" php-ts-mode--indent-defun
@@ -1063,9 +1063,10 @@ Ie, NODE is not nested."
     available.  You can install the parsers with M-x
     php-ts-mode-install-parsers"))
 
+  ;; Only for debug
   ;;(setq-local treesit--font-lock-verbose t)
-  (setq-local treesit--indent-verbose t)
-  
+  ;;(setq-local treesit--indent-verbose t)
+
   ;; Navigation.
   (setq-local treesit-defun-type-regexp
 	      (regexp-opt '("class_declaration"
@@ -1082,13 +1083,13 @@ Ie, NODE is not nested."
 	      `((php
 		 (defun ,treesit-defun-type-regexp)
 		 ;; (sexp ,  (regexp-opt
-		 ;; 	   '("definition"
-		 ;; 	     "qualifier"
-		 ;; 	     "type"
-		 ;; 	     "assignment"
-		 ;; 	     "expression"
-		 ;; 	     "literal"
-		 ;; 	     "string")))
+		 ;;	   '("definition"
+		 ;;	     "qualifier"
+		 ;;	     "type"
+		 ;;	     "assignment"
+		 ;;	     "expression"
+		 ;;	     "literal"
+		 ;;	     "string")))
 		 (sexp (not ,(eval-when-compile
 			       (rx (or "{" "}" "[" "]" "(" ")" ",")))))
 		 (sentence  ,(regexp-opt
@@ -1250,22 +1251,30 @@ Ie, NODE is not nested."
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
 `HOSTNAME': Hostname or IP address of Built-in web server,
 default `php-ts-mode-ws-hostname'.
-`DOCUMENT-ROOT': Path to Document root, default is the current directory.
+`DOCUMENT-ROOT': Path to Document root, default `php-ts-mode-ws-document-root'.
+If a default value is null, the value is prompted.
 `ROUTER': Path of the router PHP script,
 see `https://www.php.net/manual/en/features.commandline.webserver.php'
 `NUM-OF-WORKERS': Before run the web server set the
 PHP_CLI_SERVER_WORKERS env variable in order to test code that
-requires multiple concurrent requests to the built-in webserver."
-  (interactive)
-  (let* ((port (cond (port port)
-		     (php-ts-mode-ws-port php-ts-mode-ws-port)
-		     (t (read-number "Port: " 3000))))
-	 (hostname (cond (hostname hostname)
-			 (php-ts-mode-ws-hostname php-ts-mode-ws-hostname)
-			 (t (read-string "Hostname: " "localhost"))))
-	 (document-root (cond (document-root document-root)
-			      (php-ts-mode-ws-document-root php-ts-mode-ws-document-root)
-			      (t (read-string "Document-Root: " (file-name-directory (buffer-file-name))))))
+requires multiple concurrent requests to the built-in webserver.
+When called with \\[universal-argument] it requires `PORT', `HOSTNAME' and `DOCUMENT-ROOT'."
+  (interactive (when current-prefix-arg (php-ts-mode--webserver-read-args)))
+  (let* ((port (or
+		port
+		php-ts-mode-ws-port
+		(php-ts-mode--webserver-read-args 'port)))
+	 (hostname (or
+		    hostname
+		    php-ts-mode-ws-hostname
+		    (php-ts-mode--webserver-read-args 'hostname)))
+	 (document-root (or
+			 document-root
+			 php-ts-mode-ws-document-root
+			 (php-ts-mode--webserver-read-args 'document-root)))
+	 (router (or
+		  router
+		  php-ts-mode-ws-router))
 	 (host (format "%s:%d" hostname port))
 	 (name (format "PHP web server on: %s" host))
 	 (buf-name (format "*%s*" name))
@@ -1273,10 +1282,7 @@ requires multiple concurrent requests to the built-in webserver."
 		nil
 		(list "-S" host
 		      "-t" document-root
-		      (cond (router router)
-			    (php-ts-mode-ws-router php-ts-mode-ws-router)
-			    (t nil))
-		      ))))
+		      router))))
     (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workers))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
     (if (get-buffer buf-name)
@@ -1286,6 +1292,26 @@ requires multiple concurrent requests to the built-in webserver."
     (funcall
      (if (called-interactively-p 'interactive) #'display-buffer #'get-buffer)
      buf-name)))
+
+(defun php-ts-mode--webserver-read-args (&optional type)
+  "Helper for php-ts-mode-run-php-webserver.
+The optional TYPE can be 'port, 'hostname, or 'document-root,
+otherwise it requires all of them."
+  (let ((ask-port (lambda ()
+		    (read-number "Port: " 3000)))
+	(ask-hostname (lambda ()
+			(read-string "Hostname: " "localhost")))
+	(ask-document-root (lambda ()
+			     (read-string "Document-Root: "
+					  (file-name-directory (buffer-file-name))))))
+    (cl-case type
+      (port (funcall ask-port))
+      (hostname (funcall ask-hostname))
+      (document-root (funcall ask-document-root))
+      (t (list
+	  (funcall ask-port)
+	  (funcall ask-hostname)
+	  (funcall ask-document-root))))))
 
 (define-derived-mode inferior-php-ts-mode comint-mode "Inferior PHP"
   "Major mode for PHP inferior process."
@@ -1339,7 +1365,7 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 		  string
 		(concat
 		 (string-trim-right
-		  (replace-regexp-in-string 
+		  (replace-regexp-in-string
 		   "\\(?:php [\">{] \\)+\\|\\(?:/\\*  > \\)+"
 		   ""
 		   string))

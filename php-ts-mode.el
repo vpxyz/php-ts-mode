@@ -1309,22 +1309,30 @@ Ie, NODE is not nested."
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
 `HOSTNAME': Hostname or IP address of Built-in web server,
 default `php-ts-mode-ws-hostname'.
-`DOCUMENT-ROOT': Path to Document root, default is the current directory.
+`DOCUMENT-ROOT': Path to Document root, default `php-ts-mode-ws-document-root'.
+If a default value is null, the value is prompted.
 `ROUTER': Path of the router PHP script,
 see `https://www.php.net/manual/en/features.commandline.webserver.php'
 `NUM-OF-WORKERS': Before run the web server set the
 PHP_CLI_SERVER_WORKERS env variable in order to test code that
-requires multiple concurrent requests to the built-in webserver."
-  (interactive)
-  (let* ((port (cond (port port)
-		     (php-ts-mode-ws-port php-ts-mode-ws-port)
-		     (t (read-number "Port: " 3000))))
-	 (hostname (cond (hostname hostname)
-			 (php-ts-mode-ws-hostname php-ts-mode-ws-hostname)
-			 (t (read-string "Hostname: " "localhost"))))
-	 (document-root (cond (document-root document-root)
-			      (php-ts-mode-ws-document-root php-ts-mode-ws-document-root)
-			      (t (read-string "Document-Root: " (file-name-directory (buffer-file-name))))))
+requires multiple concurrent requests to the built-in webserver.
+When called with \\[universal-argument] it requires `PORT', `HOSTNAME' and `DOCUMENT-ROOT'."
+  (interactive (when current-prefix-arg (php-ts-mode--webserver-read-args)))
+  (let* ((port (or
+		port
+		php-ts-mode-ws-port
+		(php-ts-mode--webserver-read-args 'port)))
+	 (hostname (or
+		    hostname
+		    php-ts-mode-ws-hostname
+		    (php-ts-mode--webserver-read-args 'hostname)))
+	 (document-root (or
+			 document-root
+			 php-ts-mode-ws-document-root
+			 (php-ts-mode--webserver-read-args 'document-root)))
+	 (router (or
+		  router
+		  php-ts-mode-ws-router))
 	 (host (format "%s:%d" hostname port))
 	 (name (format "PHP web server on: %s" host))
 	 (buf-name (format "*%s*" name))
@@ -1332,10 +1340,7 @@ requires multiple concurrent requests to the built-in webserver."
 		nil
 		(list "-S" host
 		      "-t" document-root
-		      (cond (router router)
-			    (php-ts-mode-ws-router php-ts-mode-ws-router)
-			    (t nil))
-		      ))))
+		      router))))
     (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workers))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
     (if (get-buffer buf-name)
@@ -1345,6 +1350,26 @@ requires multiple concurrent requests to the built-in webserver."
     (funcall
      (if (called-interactively-p 'interactive) #'display-buffer #'get-buffer)
      buf-name)))
+
+(defun php-ts-mode--webserver-read-args (&optional type)
+  "Helper for php-ts-mode-run-php-webserver.
+The optional TYPE can be 'port, 'hostname, or 'document-root,
+otherwise it requires all of them."
+  (let ((ask-port (lambda ()
+		    (read-number "Port: " 3000)))
+	(ask-hostname (lambda ()
+			(read-string "Hostname: " "localhost")))
+	(ask-document-root (lambda ()
+			     (read-string "Document-Root: "
+					  (file-name-directory (buffer-file-name))))))
+    (cl-case type
+      (port (funcall ask-port))
+      (hostname (funcall ask-hostname))
+      (document-root (funcall ask-document-root))
+      (t (list
+	  (funcall ask-port)
+	  (funcall ask-hostname)
+	  (funcall ask-document-root))))))
 
 (define-derived-mode inferior-php-ts-mode comint-mode "Inferior PHP"
   "Major mode for PHP inferior process."
