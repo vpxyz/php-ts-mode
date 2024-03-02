@@ -503,7 +503,7 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
        ((parent-is "function_call_expression") parent-bol php-ts-mode-indent-offset)
        ;;((query "(member_call_expression arguments: (_) @indent)") first-sibling php-ts-mode-indent-offset)
        ;;((node-is "member_call_expression") parent-bol php-ts-mode-indent-offset)
-       ((parent-is "default_statement") parent-bol php-ts-mode-indent-offset)
+       ;;((parent-is "default_statement") parent-bol php-ts-mode-indent-offset)
        ,@common)
       (symfony ,@common)
       (wordpress ,@common)
