@@ -154,9 +154,10 @@ If nil, then `php-ts-mode-run-php-webserver' will ask you for the document root.
   :safe 'stringp
   :group 'php-ts)
 
-(defcustom php-ts-mode-ws-router nil
+(defcustom php-ts-mode-ws-router "index.php"
   "The router script that will be executed by the PHP built-in webserver.
-Useful if it's not the usual index.php."
+Customize it if it is not the usual index.php.
+If nil, then `php-ts-mode-run-php-webserver' will ask you for the router script."
   :tag "PHP built-in web server router"
   :version "30.1"
   :type 'string
@@ -415,9 +416,10 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 
 	   ((node-is ")") parent-bol 0)
 	   ((node-is "]") parent-bol 0)
-	   ((node-is "else") parent-bol 0)
-	   ((node-is "case") parent-bol php-ts-mode-indent-offset)
-	   ((node-is "default") parent-bol php-ts-mode-indent-offset)
+	   ((node-is "else_clause") parent-bol 0)
+	   ((node-is "case_statement") parent-bol php-ts-mode-indent-offset)
+	   ((node-is "default_statement") parent-bol php-ts-mode-indent-offset)
+	   ((parent-is "default_statement") parent-bol php-ts-mode-indent-offset)
 	   ;; `c-ts-common-looking-at-star' has to come before
 	   ;; `c-ts-common-comment-2nd-line-matcher'.
 	   ((and (parent-is "comment") c-ts-common-looking-at-star)
@@ -747,10 +749,15 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
       1)
      ;; some node dosen't have "document" as a parent
      ;; for e.g "description"
-     (catch-all prev-adaptive-prefix 0)))
+     (catch-all prev-adaptive-prefix 1)))
   "Tree-sitter indentation rules for for `phpdoc'.")
 
 ;;; Font-lock helpers
+(defconst php-ts-mode--phpdoc-additional-tags
+  '("@protected" "@private" "@public" "@phpstan-var")
+  "PHPDOC additional tags, currently unsupported by
+tree-sitter-phpdoc")
+
 (defvar php-ts-mode--phpdoc-font-lock-settings
   (treesit-font-lock-rules
    :language 'phpdoc
@@ -801,7 +808,7 @@ For NODE, OVERRIDE, START, and END, see
     (save-excursion
       (goto-char node-start)
       (setq end-comment (search-forward "*/" node-end t))
-      (message "node-start= %s node-end= %s start= %s end= %s end-comment=%s" node-start node-end start end end-comment)
+      ;; (message "node-start= %s node-end= %s start= %s end= %s end-comment=%s" node-start node-end start end end-comment)
       (treesit-fontify-with-override
        node-start end-comment
        'font-lock-warning-face
@@ -1274,7 +1281,8 @@ When called with \\[universal-argument] it requires `PORT', `HOSTNAME' and `DOCU
 			 (php-ts-mode--webserver-read-args 'document-root)))
 	 (router (or
 		  router
-		  php-ts-mode-ws-router))
+		  php-ts-mode-ws-router
+		  (php-ts-mode--webserver-read-args 'router-script)))
 	 (host (format "%s:%d" hostname port))
 	 (name (format "PHP web server on: %s" host))
 	 (buf-name (format "*%s*" name))
@@ -1295,23 +1303,28 @@ When called with \\[universal-argument] it requires `PORT', `HOSTNAME' and `DOCU
 
 (defun php-ts-mode--webserver-read-args (&optional type)
   "Helper for php-ts-mode-run-php-webserver.
-The optional TYPE can be 'port, 'hostname, or 'document-root,
+The optional TYPE can be 'port, 'hostname, 'document-root or 'router-script,
 otherwise it requires all of them."
   (let ((ask-port (lambda ()
 		    (read-number "Port: " 3000)))
 	(ask-hostname (lambda ()
 			(read-string "Hostname: " "localhost")))
 	(ask-document-root (lambda ()
-			     (read-string "Document-Root: "
+			     (read-string "Document root: "
+					  (file-name-directory (buffer-file-name)))))
+	(ask-router-script (lambda ()
+			     (read-string "Router script: "
 					  (file-name-directory (buffer-file-name))))))
     (cl-case type
       (port (funcall ask-port))
       (hostname (funcall ask-hostname))
       (document-root (funcall ask-document-root))
+      (router-script (funcall ask-router-script))
       (t (list
 	  (funcall ask-port)
 	  (funcall ask-hostname)
-	  (funcall ask-document-root))))))
+	  (funcall ask-document-root)
+	  (funcall ask-router-script))))))
 
 (define-derived-mode inferior-php-ts-mode comint-mode "Inferior PHP"
   "Major mode for PHP inferior process."
