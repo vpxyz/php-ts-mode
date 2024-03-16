@@ -306,11 +306,11 @@ To set the default indent style globally, use
   (if (not (derived-mode-p 'php-ts-mode))
       (user-error "The current buffer is not in `php-ts-mode'")
     (setq-local php-ts-mode-indent-style style)
-    (php-ts-mode--set-indent-property style)   
+    (php-ts-mode--set-indent-property style)
     (let ((rules (assq-delete-all 'php treesit-simple-indent-rules))
-	  (new-style (treesit--indent-rules-optimize
-	   (php-ts-mode--get-indent-style))))
-      (setq treesit-simple-indent-rules (add-to-list 'rules new-style)))))
+	  (new-style (car (treesit--indent-rules-optimize
+			   (php-ts-mode--get-indent-style)))))
+      (setq treesit-simple-indent-rules (cons new-style rules)))))
 
 (defun php-ts-mode--get-parser-ranges ()
   "Return the ranges covered by the parsers.
