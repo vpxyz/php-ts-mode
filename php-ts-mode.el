@@ -78,7 +78,6 @@
     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
     (css . ("https://github.com/tree-sitter/tree-sitter-css")))
   "Treesitter language parser alist required by `php-ts-mode'.
-
 You can customize this variable if you want to stick to a specific
 commit and/or use different parsers.")
 
@@ -210,7 +209,6 @@ symbol."
 
 (defcustom php-ts-mode-indent-style 'psr2
   "Style used for indentation.
-
 The selected style could be one of:
 `PSR-2/PSR-12' - use PSR standards (PSR-2, PSR-12), thi is the default.
 `PEAR' - use coding styles preferred for PEAR code and modules.
@@ -271,7 +269,6 @@ MODE can be `psr2', `pear', `drupal', `wordpress', `symfony', `zend'."
 
 (defun php-ts-mode-set-global-style (style)
   "Set the indent style of PHP modes globally to STYLE.
-
 This changes the current indent style of every PHP buffer and
 the default PHP indent style for `php-ts-mode'
 in this Emacs session."
@@ -290,8 +287,8 @@ in this Emacs session."
     (drupal (setq php-ts-mode-indent-offset 2
 		  tab-width 2
 		  indent-tabs-mode nil))
-    (wordpress (setq php-ts-mode-indent-offset 2
-		     tab-width 2
+    (wordpress (setq php-ts-mode-indent-offset 4
+		     tab-width 4
 		     indent-tabs-mode t))
     (symfony (setq php-ts-mode-indent-offset 4
 		   tab-width 4
@@ -302,21 +299,20 @@ in this Emacs session."
 
 (defun php-ts-mode-set-style (style)
   "Set the PHP indent style of the current buffer to STYLE.
-
 To set the default indent style globally, use
 `php-ts-mode-set-global-style'."
   (interactive (list (php-ts-mode--prompt-for-style)))
   (if (not (derived-mode-p 'php-ts-mode))
       (user-error "The current buffer is not in `php-ts-mode'")
     (setq-local php-ts-mode-indent-style style)
-    (php-ts-mode--set-indent-property style)
-    (setq treesit-simple-indent-rules
-	  (treesit--indent-rules-optimize
-	   (php-ts-mode--get-indent-style)))))
+    (php-ts-mode--set-indent-property style)   
+    (let ((rules (assq-delete-all 'php treesit-simple-indent-rules))
+	  (new-style (treesit--indent-rules-optimize
+	   (php-ts-mode--get-indent-style))))
+      (setq treesit-simple-indent-rules (add-to-list 'rules new-style)))))
 
 (defun php-ts-mode--get-parser-ranges ()
   "Return the ranges covered by the parsers.
-
 `php-ts-mode' use 4 parsers, this function returns, for the
 current buffer, the ranges covered by each parser.
 Usefull for debugging."
@@ -773,7 +769,6 @@ If NODE is null return `line-beginning-position'. PARENT is ignored."
 
 (defun php-ts-mode--font-lock-comment (node override start end &rest _)
   "Fontify the comments and phpdoc comment.
-
     For NODE, OVERRIDE, START, and END, see `treesit-font-lock-rules'."
   (save-excursion
     (let ((node-start (treesit-node-start node))
@@ -936,7 +931,6 @@ For NODE, OVERRIDE, START, and END, see
 
 (defun php-ts-mode--defun-object-name (node node-text)
   "Compose the full name of a NODE that is a PHP variable, method, class etc.
-
 If the NODE has a parent recursively compose the parents name whith NODE-TEXT,
 othewire return NODE-TEXT."
   (let* ((parent-node (php-ts-mode--parent-object node))
@@ -955,7 +949,6 @@ othewire return NODE-TEXT."
 
 (defun php-ts-mode--defun-name (node)
   "Return the defun name of NODE.
-
 Return nil if there is no name or if NODE is not a defun node."
   (let ((child (treesit-node-child-by-field-name node "name")))
     (cl-case (intern (treesit-node-type node))
@@ -974,7 +967,6 @@ Return nil if there is no name or if NODE is not a defun node."
 
 (defun php-ts-mode--indent-defun ()
   "Indent the current top-level declaration syntactically.
-
 `treesit-defun-type-regexp' defines what constructs to indent."
   (interactive "*")
   (when-let ((orig-point (point-marker))
@@ -986,26 +978,23 @@ Return nil if there is no name or if NODE is not a defun node."
 ;;; Filling
 (defun php-ts-mode-comment-setup ()
   "Set up local variables for PHP comment.
-
 Derived from `c-ts-common-comment-setup'."
   (c-ts-common-comment-setup)
-  (setq-local c-ts-common--comment-regexp "comment")
-  (setq-local comment-start "// ")
-  (setq-local comment-style 'extra-line)
-  (setq-local comment-continue "* ")
-  (setq-local comment-start-skip
+  (setq-local c-ts-common--comment-regexp "comment"
+	      comment-start "// "
+	      comment-style 'extra-line
+	      comment-start-skip
 	      (eval-when-compile
 		(rx (group (or (: "#" (not (any "[")))
 			       (: "/" (+ "/"))
-			       (: "/*"))
-			   (* (syntax whitespace))))))
-  (setq-local comment-end ""))
+			       (: "/*")))
+		    (* (syntax whitespace))))
+	      comment-end ""))
 
 ;;; Defun navigation
 
 (defun php-ts-mode--defun-valid-p (node)
   "Return non-nil if NODE is a valid defun node.
-
 Ie, NODE is not nested."
   (not (and (member (treesit-node-type node)
 		    '("variable_name"
@@ -1431,7 +1420,7 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 		  string
 		(concat
 		 (string-trim-right
-		  (replace-regexp-in-string 
+		  (replace-regexp-in-string
 		   "\\(?:php [\">{] \\)+\\|\\(?:/\\*  > \\)+"
 		   ""
 		   string))
@@ -1489,13 +1478,14 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
   (with-current-buffer php-ts-mode-inferior-buffer
     (kill-buffer-and-window)))
 
+(derived-mode-add-parents 'php-ts-mode '(php-mode))
 (when (treesit-ready-p 'php)
-      (add-to-list
-       'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
-      (add-to-list
-       'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
-      (add-to-list
-       'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
+  (add-to-list
+   'auto-mode-alist '("\\.\\(?:php[s345]?\\|phtml\\)\\'" . php-ts-mode))
+  (add-to-list
+   'auto-mode-alist '("\\.\\(?:php\\|inc\\|stub\\)\\'" . php-ts-mode))
+  (add-to-list
+   'auto-mode-alist '("/\\.php_cs\\(?:\\.dist\\)?\\'" . php-ts-mode)))
 
 (provide 'php-ts-mode)
 
