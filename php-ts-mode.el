@@ -1410,7 +1410,7 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 		    ;; Re-add the prompt for the next line, if isn't empty.
 		    (if (string= clean-string "")
 			""
-		      (concat clean-string prompt))))))
+		      (concat (string-chop-newline clean-string) "\n" prompt))))))
 	    nil t)
   (when php-ts-mode-inferior-history
     (set-process-sentinel
