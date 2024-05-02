@@ -534,6 +534,7 @@ the offset and outside the html at 0"
 		(parent-is "if_statement")
 		(parent-is "else_clause")
 		(parent-is "for_statement")
+		(parent-is "foreach_statement")
 		(parent-is "while_statement")
 		(parent-is "do_statement"))
 	    parent-bol php-ts-mode-indent-offset))))
