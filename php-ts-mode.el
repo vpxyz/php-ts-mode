@@ -473,6 +473,10 @@ the offset and outside the html at 0"
 	   ((node-is "case_statement") parent-bol php-ts-mode-indent-offset)
 	   ((node-is "default_statement") parent-bol php-ts-mode-indent-offset)
 	   ((parent-is "default_statement") parent-bol php-ts-mode-indent-offset)
+	   ((and
+	     (parent-is "expression_statement")
+	     (node-is ";"))
+	    parent-bol 0)
 	   ((parent-is "expression_statement") parent-bol php-ts-mode-indent-offset)
 	   ;; `c-ts-common-looking-at-star' has to come before
 	   ;; `c-ts-common-comment-2nd-line-matcher'.
