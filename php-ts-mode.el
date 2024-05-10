@@ -135,7 +135,7 @@ See `https://www.php.net/manual/en/features.commandline.webserver.php'."
   :type 'string
   :safe 'stringp)
 
-(defcustom php-ts-mode-ws-port 3000
+(defcustom php-ts-mode-ws-port nil
   "The port on which the PHP built-in webserver will listen.
 If nil, then `php-ts-mode-run-php-webserver' will ask you for the port number."
   :tag "PHP built-in web server port"
@@ -507,6 +507,8 @@ the offset and outside the html at 0"
 	   ((query "(for_statement (update_expression (_)) @indent)") parent-bol php-ts-mode-indent-offset)
 	   ((query "(function_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
 	   ((query "(member_call_expression arguments: (_) @indent)") parent php-ts-mode-indent-offset)
+	   ((query "(scoped_call_expression name: (_) @indent)") parent php-ts-mode-indent-offset)
+	   ((parent-is "scoped_property_access_expression") parent php-ts-mode-indent-offset)
 
 	   ;; Closing bracket. Must stay here, the rule order matter.
 	   ((node-is "}") standalone-parent 0)
@@ -530,7 +532,7 @@ the offset and outside the html at 0"
 
 	   ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
 	   ((parent-is "switch_block") parent-bol 0)
-	   
+
 	   ;; These rules are for cases where the body is bracketless.
 	   ((query "(do_statement \"while\" @indent)") parent-bol 0)
 	   ((or (parent-is "switch_statement")
@@ -685,7 +687,7 @@ the offset and outside the html at 0"
    ;;:override t
    `(("\"") @font-lock-string-face
      (encapsed_string) @font-lock-string-face
-     (string_value) @font-lock-string-face
+     (string_content) @font-lock-string-face
      (string) @font-lock-string-face)
 
    :language 'php
@@ -693,7 +695,7 @@ the offset and outside the html at 0"
    '((heredoc identifier: (heredoc_start) @font-lock-constant-face)
      (heredoc end_tag: (heredoc_end) @font-lock-constant-face)
      (heredoc (_) @font-lock-costant-face)
-     (heredoc_body (string_value) @font-lock-string-face)
+     (heredoc_body (string_content) @font-lock-string-face)
      (nowdoc) @font-lock-string-face
      (shell_command_expression) @font-lock-string-face)
 
@@ -1256,10 +1258,12 @@ Derived from `c-ts-common-comment-setup'."
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings (php-ts-mode--font-lock-settings))
-  (treesit-add-font-lock-rules php-ts-mode--custom-html-font-lock-settings)
-  (treesit-add-font-lock-rules js--treesit-font-lock-settings)
-  (treesit-add-font-lock-rules css--treesit-settings)
-  (treesit-add-font-lock-rules php-ts-mode--phpdoc-font-lock-settings)
+  (setq-local treesit-font-lock-settings
+	      (append treesit-font-lock-settings
+		      php-ts-mode--custom-html-font-lock-settings
+		      js--treesit-font-lock-settings
+		      css--treesit-settings
+		      php-ts-mode--phpdoc-font-lock-settings))
 
   (setq-local treesit-font-lock-feature-list php-ts-mode--feature-list)
 
@@ -1277,6 +1281,7 @@ Derived from `c-ts-common-comment-setup'."
   "Run the PHP Built-in web-server on a specified PORT.
 
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
+If a default value is null, the value is prompted.
 `HOSTNAME': Hostname or IP address of Built-in web server,
 default `php-ts-mode-ws-hostname'.
 `DOCUMENT-ROOT': Path to Document root, default `php-ts-mode-ws-document-root'.
