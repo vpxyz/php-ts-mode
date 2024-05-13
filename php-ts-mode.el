@@ -528,21 +528,20 @@ the offset and outside the html at 0"
 	   ((parent-is "compound_statement") parent-bol php-ts-mode-indent-offset)
 	   ;; Opening bracket.
 	   ((node-is "compound_statement") standalone-parent php-ts-mode-indent-offset)
-	   ;; Opening bracket without closing bracket
 
 	   ((parent-is "match_block") parent-bol php-ts-mode-indent-offset)
 	   ((parent-is "switch_block") parent-bol 0)
 
 	   ;; These rules are for cases where the body is bracketless.
 	   ((query "(do_statement \"while\" @indent)") parent-bol 0)
-	   ((or (parent-is "switch_statement")
-		(parent-is "case_statement")
-		(parent-is "if_statement")
+	   ((or (parent-is "if_statement")
 		(parent-is "else_clause")
 		(parent-is "for_statement")
 		(parent-is "foreach_statement")
 		(parent-is "while_statement")
-		(parent-is "do_statement"))
+		(parent-is "do_statement")
+		(parent-is "switch_statement")
+		(parent-is "case_statement"))
 	    parent-bol php-ts-mode-indent-offset))))
     `((psr2
        ((parent-is "program") parent-bol 0)
@@ -901,11 +900,12 @@ For NODE, OVERRIDE, START, and END, see
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) node-type)))
     (save-excursion
       (goto-char (treesit-node-start node))
-      (cond ((and (string= "comment" node-type) (looking-at-p "/\\*\\*")) 'phpdoc)
-	    ((not (member node-query '("(program (text))"
-				       "(text_interpolation (text))")))
-	     'php)
-	    (t (php-ts-mode--html-language-at-point point))))))
+      (cond    
+       ((not (member node-query '("(program (text))"
+				  "(text_interpolation (text))")))
+	'php)
+       (t (php-ts-mode--html-language-at-point point))))))
+
 
 ;;; Imenu
 
