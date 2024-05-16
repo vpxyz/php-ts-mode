@@ -74,11 +74,11 @@
 
 ;;; Install treesitter language parsers
 (defvar php-ts-mode--language-source-alist
-  '((php . ("https://github.com/tree-sitter/tree-sitter-php"))
+  '((php . ("https://github.com/tree-sitter/tree-sitter-php" "v0.22.4"))
     (phpdoc . ("https://github.com/claytonrcarter/tree-sitter-phpdoc"))
-    (html . ("https://github.com/tree-sitter/tree-sitter-html"))
-    (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
-    (css . ("https://github.com/tree-sitter/tree-sitter-css")))
+    (html . ("https://github.com/tree-sitter/tree-sitter-html"  "v0.20.3"))
+    (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript" "v0.21.2"))
+    (css . ("https://github.com/tree-sitter/tree-sitter-css" "v0.21.0")))
   "Treesitter language parser alist required by `php-ts-mode'.
 You can customize this variable if you want to stick to a specific
 commit and/or use different parsers.")
@@ -147,15 +147,6 @@ If nil, then `php-ts-mode-run-php-webserver' will ask you for the port number."
   "The root of the documents that the PHP built-in webserver will serve.
 If nil, then `php-ts-mode-run-php-webserver' will ask you for the document root."
   :tag "PHP built-in web server document root"
-  :version "30.1"
-  :type 'string
-  :safe 'stringp)
-
-(defcustom php-ts-mode-ws-router "index.php"
-  "The router script that will be executed by the PHP built-in webserver.
-Customize it if it is not the usual index.php.
-If nil, then `php-ts-mode-run-php-webserver' will ask you for the router script."
-  :tag "PHP built-in web server router"
   :version "30.1"
   :type 'string
   :safe 'stringp)
@@ -1104,21 +1095,24 @@ Derived from `c-ts-common-comment-setup'."
     ["Customize" (lambda () (interactive) (customize-group "php-ts"))]))
 
 (defvar php-ts-mode--feature-list
-  '((comment definition spell
-     ;; CSS
+  '((;; common
+     comment definition spell
+     ;; CSS specific
      query selector
-     ;; HTML
+     ;; HTML specific
      text
-     ;; PHPDOC
+     ;; PHPDOC specific
      document
      phpdoc-error)
     (keyword string type name)
-    (attribute assignment constant escape-sequence function-scope
+    (;; common
+     attribute assignment constant escape-sequence function-scope
      base-clause literal variable-name variable
-     ;; Javascript
+     ;; Javascript specific
      jsx number pattern string-interpolation)
-    (argument bracket delimiter error function-call operator property
-     ;; Javascript
+    (;; common
+     argument bracket delimiter error function-call operator property
+     ;; Javascript specific
      function)))
 
 ;;;###autoload
@@ -1277,52 +1271,58 @@ Derived from `c-ts-common-comment-setup'."
 
 
 ;;;###autoload
-(defun php-ts-mode-run-php-webserver (&optional port hostname document-root router num-of-workers)
+(defun php-ts-mode-run-php-webserver (port hostname document-root &optional router-script num-of-workers)
   "Run the PHP Built-in web-server on a specified PORT.
 
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
-If a default value is null, the value is prompted.
+If a default value is NIL, the value is prompted.
 `HOSTNAME': Hostname or IP address of Built-in web server,
-default `php-ts-mode-ws-hostname'.
+default `php-ts-mode-ws-hostname'. If a default value is NIL, the value is prompted.
 `DOCUMENT-ROOT': Path to Document root, default `php-ts-mode-ws-document-root'.
-If a default value is null, the value is prompted.
-`ROUTER': Path of the router PHP script,
+If a default value is NIL, the value is prompted.
+`ROUTER-SCRIPT': Path of the router PHP script,
 see `https://www.php.net/manual/en/features.commandline.webserver.php'
 `NUM-OF-WORKERS': Before run the web server set the
 PHP_CLI_SERVER_WORKERS env variable in order to test code that
 requires multiple concurrent requests to the built-in webserver.
-When called with \\[universal-argument] it requires `PORT', `HOSTNAME' and `DOCUMENT-ROOT'."
-  (interactive (when current-prefix-arg (php-ts-mode--webserver-read-args)))
-  (let* ((port (or
-		port
-		php-ts-mode-ws-port
-		(php-ts-mode--webserver-read-args 'port)))
-	 (hostname (or
-		    hostname
-		    php-ts-mode-ws-hostname
-		    (php-ts-mode--webserver-read-args 'hostname)))
-	 (document-root (or
-			 document-root
-			 php-ts-mode-ws-document-root
-			 (php-ts-mode--webserver-read-args 'document-root)))
-	 (router (or
-		  router
-		  php-ts-mode-ws-router
-		  (php-ts-mode--webserver-read-args 'router-script)))
-	 (host (format "%s:%d" hostname port))
+
+When called with \\[universal-argument] it requires `PORT',
+`HOSTNAME', `DOCUMENT-ROOT' and `ROUTER-SCRIPT'."
+  ;; (interactive (when current-prefix-arg (php-ts-mode--webserver-read-args)))
+  (interactive (if current-prefix-arg
+		   (php-ts-mode--webserver-read-args)
+		 (list
+		  ;; port
+		  (or
+		   (when (boundp 'port) port)
+		   php-ts-mode-ws-port
+		   (php-ts-mode--webserver-read-args 'port))
+		  ;; hostname
+		  (or
+		   (when (boundp 'hostname) hostname)
+		   php-ts-mode-ws-hostname
+		   (php-ts-mode--webserver-read-args 'hostname))
+		  ;; document-root
+		  (or
+		   (when (boundp 'document-root) document-root)
+		   php-ts-mode-ws-document-root
+		   (php-ts-mode--webserver-read-args 'document-root)))))
+  (let* ((host (format "%s:%d" hostname port))
 	 (name (format "PHP web server on: %s" host))
 	 (buf-name (format "*%s*" name))
 	 (args (delq
 		nil
 		(list "-S" host
 		      "-t" document-root
-		      router))))
+		      router-script))))
     (cond (num-of-workers (setenv "PHP_CLI_SERVER_WORKERS" num-of-workers))
 	  (php-ts-mode-ws-workers (setenv "PHP_CLI_SERVER_WORKERS" php-ts-mode-ws-workers)))
     (if (get-buffer buf-name)
-	(message "Switch to already running web server")
-      (message "Run PHP built-in web server with args %s" (string-join args " ")))
-    (apply #'make-comint name php-ts-mode-php-executable nil args)
+	(message "Switch to already running web server into buffer %s" buf-name)
+      (message "Run PHP built-in web server with args %s into buffer %s"
+	       (string-join args " ")
+	       buf-name)
+      (apply #'make-comint name php-ts-mode-php-executable nil args))
     (funcall
      (if (called-interactively-p 'interactive) #'display-buffer #'get-buffer)
      buf-name)))
@@ -1336,11 +1336,13 @@ otherwise it requires all of them."
 	(ask-hostname (lambda ()
 			(read-string "Hostname: " "localhost")))
 	(ask-document-root (lambda ()
-			     (read-string "Document root: "
-					  (file-name-directory (buffer-file-name)))))
+			     (expand-file-name
+			      (read-directory-name "Document root: "
+						   (file-name-directory (buffer-file-name))))))
 	(ask-router-script (lambda ()
-			     (read-string "Router script: "
-					  (file-name-directory (buffer-file-name))))))
+			     (expand-file-name
+			      (read-file-name "Router script: "
+					      (file-name-directory (buffer-file-name)))))))
     (cl-case type
       (port (funcall ask-port))
       (hostname (funcall ask-hostname))
@@ -1368,13 +1370,13 @@ otherwise it requires all of them."
   "Runs a PHP interpreter as a subprocess of Emacs, with PHP
 I/O through an Emacs buffer.  Variables `php-ts-mode-php-executable'
 and `php-ts-mode-php-config' control which PHP interpreter is run."
-  (interactive (list
-		(if current-prefix-arg
+  (interactive (if current-prefix-arg
+		   (list
 		    (read-string "Run PHP: " php-ts-mode-php-executable)
-		  php-ts-mode-php-executable)
-		(if current-prefix-arg
-		    (read-string "With config: " php-ts-mode-php-config)
-		  php-ts-mode-php-config)))
+		    (expand-file-name (read-file-name "With config: " php-ts-mode-php-config)))
+		 (list
+		  php-ts-mode-php-executable
+		  (expand-file-name php-ts-mode-php-config))))
   (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer)))
     (unless (comint-check-proc buffer)
       (with-current-buffer buffer
