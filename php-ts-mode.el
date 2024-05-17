@@ -852,6 +852,7 @@ the offset and outside the html at 0"
    :feature 'attribute
    :override t
    `((tag_name) @font-lock-constant-face
+     (uri) @font-lock-doc-markup-face
      (tag
       [(version) (email_address)] @font-lock-doc-markup-face)
      (tag (author_name) @font-lock-property-name-face))
