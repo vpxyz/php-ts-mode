@@ -1376,7 +1376,7 @@ and `php-ts-mode-php-config' control which PHP interpreter is run."
 		    (expand-file-name (read-file-name "With config: " php-ts-mode-php-config)))
 		 (list
 		  php-ts-mode-php-executable
-		  (expand-file-name php-ts-mode-php-config))))
+		  (and php-ts-mode-php-config (expand-file-name php-ts-mode-php-config)))))
   (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer)))
     (unless (comint-check-proc buffer)
       (with-current-buffer buffer
