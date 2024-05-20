@@ -74,7 +74,7 @@
 
 ;;; Install treesitter language parsers
 (defvar php-ts-mode--language-source-alist
-  '((php . ("https://github.com/tree-sitter/tree-sitter-php" "v0.22.4"))
+  '((php . ("https://github.com/tree-sitter/tree-sitter-php" "v0.22.5"))
     (phpdoc . ("https://github.com/claytonrcarter/tree-sitter-phpdoc"))
     (html . ("https://github.com/tree-sitter/tree-sitter-html"  "v0.20.3"))
     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript" "v0.21.2"))
@@ -120,7 +120,7 @@ By default, the value is the same as `html-ts-mode-indent-offset'"
   :safe 'stringp)
 
 (defcustom php-ts-mode-php-config nil
-  "The location of php.ini file. If nil php use the default one."
+  "The location of php.ini file.  If nil php use the default one."
   :tag "PHP Init file"
   :version "30.1"
   :type 'string
@@ -284,8 +284,10 @@ To set the default indent style globally, use
 `php-ts-mode-set-global-style'."
   (interactive (list (php-ts-mode--prompt-for-style)))
   (cond
-   ((not (derived-mode-p 'php-ts-mode)) (user-error "The current buffer is not in `php-ts-mode'"))
-   ((equal php-ts-mode-indent-style style) (message "The style is already %s" style));; nothing to do
+   ((not (derived-mode-p 'php-ts-mode))
+    (user-error "The current buffer is not in `php-ts-mode'"))
+   ((equal php-ts-mode-indent-style style)
+    (message "The style is already %s" style));; nothing to do
    (t (progn
 	(setq-local php-ts-mode-indent-style style)
 	(php-ts-mode--set-indent-property style)
@@ -370,7 +372,7 @@ PARENT is its parent."
 
 (defun php-ts-mode--js-css-tag-bol (node parent &rest _)
   "Find the first non-space caracters of html tags <script> or <style>.
-If NODE is null return `line-beginning-position'. PARENT is ignored."
+If NODE is null return `line-beginning-position'.  PARENT is ignored."
   (if (null node)
       (line-beginning-position)
     (save-excursion
@@ -435,6 +437,8 @@ the offset and outside the html at 0"
 	(back-to-indentation)
 	(+ (point) php-ts-mode-indent-offset)))))
 
+;; TODO: questa sembra fare la stessa indentica coda di
+;; c-ts-mode--fist-sibling (che però è definita in c-ts-mode e non in c-ts-common
 (defun php-ts-mode--first-sibling-align (node parent bol &rest _)
   "Return the starting position of the first child of a sibling."
   (let ((first-sibling-start
@@ -477,6 +481,7 @@ the offset and outside the html at 0"
 	    c-ts-common-comment-2nd-line-anchor
 	    1)
 	   ((parent-is "comment") prev-adaptive-prefix 0)
+
 	   ((parent-is "method_declaration") parent-bol 0)
 	   ((node-is "class_interface_clause") parent-bol php-ts-mode-indent-offset)
 	   ((query "(class_interface_clause (name) @indent)") php-ts-mode--parent-eol 1)
@@ -493,6 +498,8 @@ the offset and outside the html at 0"
 	   ((or (parent-is "arguments")
 		(parent-is "formal_parameters"))
 	    parent-bol php-ts-mode-indent-offset)
+	   ;; TODO: query penso si possa sostituire con "match"
+	   ;; ad esempio (match "assignment_expression" "for_statement")
 	   ((query "(for_statement (assignment_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
 	   ((query "(for_statement (binary_expression left: (_)) @indent)") parent-bol php-ts-mode-indent-offset)
 	   ((query "(for_statement (update_expression (_)) @indent)") parent-bol php-ts-mode-indent-offset)
@@ -683,10 +690,11 @@ the offset and outside the html at 0"
    :language 'php
    :feature 'literal
    '((heredoc identifier: (heredoc_start) @font-lock-constant-face)
-     (heredoc end_tag: (heredoc_end) @font-lock-constant-face)
-     (heredoc (_) @font-lock-costant-face)
      (heredoc_body (string_content) @font-lock-string-face)
-     (nowdoc) @font-lock-string-face
+     (heredoc end_tag: (heredoc_end) @font-lock-constant-face)
+     (nowdoc identifier: (heredoc_start) @font-lock-constant-face)
+     (nowdoc_body (nowdoc_string) @font-lock-string-face)
+     (nowdoc end_tag: (heredoc_end) @font-lock-constant-face)
      (shell_command_expression) @font-lock-string-face)
 
    :language 'php
@@ -788,8 +796,7 @@ the offset and outside the html at 0"
    :language 'php
    :feature 'error
    :override t
-   '((ERROR) @php-ts-mode--fontify-error)
-   ))
+   '((ERROR) @php-ts-mode--fontify-error)))
 
 (defvar php-ts-mode--phpdoc-indent-rules
   '((phpdoc
@@ -997,6 +1004,69 @@ Ie, NODE is not nested."
 
 ;;; Filling
 
+(defun php-ts-common-comment-indent-new-line (&optional soft)
+  "Break line at point and indent, continuing comment if within one.
+
+This is like `comment-indent-new-line', but specialized for C-style //
+and /* */ comments.  SOFT works the same as in
+`comment-indent-new-line'."
+  ;; I want to experiment with explicitly listing out all each cases and
+  ;; handle them separately, as opposed to fiddling with `comment-start'
+  ;; and friends.  This will have more duplicate code and will be less
+  ;; generic, but in the same time might save us from writting cryptic
+  ;; code to handle all sorts of edge cases.
+  ;;
+  ;; For this command, let's try to make it basic: if the current line
+  ;; is a // comment, insert a newline and a // prefix; if the current
+  ;; line is in a /* comment, insert a newline and a * prefix.  No
+  ;; auto-fill or other smart features.
+  (cond
+   ;; Line starts with //, or ///, or ////...
+   ;; Or //! (used in rust).
+   ((save-excursion
+      (beginning-of-line)
+      (re-search-forward
+       (rx "//" (group (* (any "/!")) (* " ")))
+       (line-end-position)
+       t nil))
+    (let ((offset (- (match-beginning 0) (line-beginning-position)))
+	  (whitespaces (match-string 1)))
+      (if soft (insert-and-inherit ?\n) (newline 1))
+      (delete-region (line-beginning-position) (point))
+      (insert (make-string offset ?\s) "//" whitespaces)))
+
+   ;; Line starts with /* or /**.
+   ((save-excursion
+      (beginning-of-line)
+      (re-search-forward
+       (rx "/*" (group (? "*") (* " ")))
+       (line-end-position)
+       t nil))
+    (let ((offset (- (match-beginning 0) (line-beginning-position)))
+	  (whitespace-and-star-len (length (match-string 1))))
+      (if soft (insert-and-inherit ?\n) (newline 1))
+      (delete-region (line-beginning-position) (point))
+      (insert (make-string offset ?\s) " *" (make-string whitespace-and-star-len ?\s))))
+
+   ;; Line starts with *.
+   ((save-excursion
+      (beginning-of-line)
+      (looking-at (rx (group (* " ") (any "*|") (* " ")))))
+    (let ((prefix (match-string 1)))
+      (if soft (insert-and-inherit ?\n) (newline 1))
+      (delete-region (line-beginning-position) (point))
+      (insert prefix)))
+
+   ;; Line starts with whitespaces or no space.  This is basically the
+   ;; default case since (rx (* " ")) matches anything.
+   ((save-excursion
+      (beginning-of-line)
+      (looking-at (rx (* " "))))
+    (let ((whitespaces (match-string 0)))
+      (if soft (insert-and-inherit ?\n) (newline 1))
+      (delete-region (line-beginning-position) (point))
+      (insert whitespaces)))))
+
 (defun php-ts-mode--comment-indent-new-line (&optional soft)
   "Break line at point and indent, continuing comment if within one.
 This is like `c-ts-common-comment-indent-new-line', but handle the
@@ -1005,13 +1075,18 @@ less common PHP-style # comment.  SOFT works the same as in
   (if (save-excursion
 	;; Line start with # or ## or ###...
 	(beginning-of-line)
-	(looking-at (rx "#" (* "#") (* " "))))
-      (let ((prefix (match-string 0)))
+	(re-search-forward
+	 (rx "#" (group (* (any "#")) (* (syntax whitespace))))
+	 (line-end-position)
+	 t nil))
+      (let ((offset (- (match-beginning 0) (line-beginning-position)))	    
+	    (comment-prefix (match-string 0)))
+	;; (message "match # comment ")
 	(if soft (insert-and-inherit ?\n) (newline 1))
 	(delete-region (line-beginning-position) (point))
-	(insert prefix))
+	(insert (make-string offset ?\s) comment-prefix))
     ;; other style of comments
-    (c-ts-common-comment-indent-new-line soft)))
+    (php-ts-common-comment-indent-new-line soft)))
 
 (defun php-ts-mode-comment-setup ()
   "Set up local variables for PHP comment.
@@ -1023,7 +1098,17 @@ Derived from `c-ts-common-comment-setup'."
 	      comment-start-skip (rx (or (seq "#" (not (any "[")))
 					 (seq "/" (+ "/"))
 					 (seq "/" (+ "*")))
-				     (* (syntax whitespace)))))
+				     (* (syntax whitespace)))
+	      ;; quello che segue è per cercare di sistemare l'indentazione
+	      ;; dei commenti di linea
+	      ;; adaptive-fill-first-line-regexp (purecopy "\\`[ \t]*\\'")))
+	      adaptive-fill-first-line-regexp (rx bos
+						  (seq (* (syntax whitespace))
+						       (or 
+							(group (seq "/" (+ "/")))
+							(group (seq "#" (+ "#"))))
+						       (* (syntax whitespace)))
+						  eos)))
 
 
 ;;; Modes
@@ -1330,7 +1415,7 @@ When called with \\[universal-argument] it requires `PORT',
 
 (defun php-ts-mode--webserver-read-args (&optional type)
   "Helper for php-ts-mode-run-php-webserver.
-The optional TYPE can be 'port, 'hostname, 'document-root or 'router-script,
+The optional TYPE can be \"port\", \"hostname\", \"document-root\" or \"router-script\",
 otherwise it requires all of them."
   (let ((ask-port (lambda ()
 		    (read-number "Port: " 3000)))
@@ -1367,17 +1452,25 @@ otherwise it requires all of them."
 
 
 ;;;###autoload
-(defun run-php (cmd config)
+(defun run-php (&optional cmd config)
   "Runs a PHP interpreter as a subprocess of Emacs, with PHP
-I/O through an Emacs buffer.  Variables `php-ts-mode-php-executable'
-and `php-ts-mode-php-config' control which PHP interpreter is run."
+I/O through an Emacs buffer.
+Argumens CMD an CONFIG, defaults to `php-ts-mode-php-executable'
+and `php-ts-mode-php-config' respectively, control which PHP interpreter is run.
+If CONFIG is nil the intepreter run with the default php.ini.
+if `php-ts-mode-php-executable' is not defined the user is prompted."
   (interactive (if current-prefix-arg
 		   (list
 		    (read-string "Run PHP: " php-ts-mode-php-executable)
 		    (expand-file-name (read-file-name "With config: " php-ts-mode-php-config)))
 		 (list
-		  php-ts-mode-php-executable
-		  (and php-ts-mode-php-config (expand-file-name php-ts-mode-php-config)))))
+		  (or
+		   (when (boundp 'cmd) cmd)
+		   php-ts-mode-php-executable
+		   (read-string "Run PHP: " php-ts-mode-php-executable))
+		  (or
+		   (when (boundp 'config) config)
+		   (and php-ts-mode-php-config (expand-file-name php-ts-mode-php-config))))))
   (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer)))
     (unless (comint-check-proc buffer)
       (with-current-buffer buffer
