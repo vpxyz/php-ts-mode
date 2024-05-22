@@ -1029,11 +1029,13 @@ and /* */ comments.  SOFT works the same as in
        (rx "//" (group (* (any "/!")) (* " ")))
        (line-end-position)
        t nil))
-    (let ((offset (- (match-beginning 0) (line-beginning-position)))
+    (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
 	  (whitespaces (match-string 1)))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
-      (insert (make-string offset ?\s) "//" whitespaces)))
+      (insert
+       offset
+       "//" whitespaces)))
 
    ;; Line starts with /* or /**.
    ((save-excursion
@@ -1042,16 +1044,19 @@ and /* */ comments.  SOFT works the same as in
        (rx "/*" (group (? "*") (* " ")))
        (line-end-position)
        t nil))
-    (let ((offset (- (match-beginning 0) (line-beginning-position)))
+    (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
 	  (whitespace-and-star-len (length (match-string 1))))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
-      (insert (make-string offset ?\s) " *" (make-string whitespace-and-star-len ?\s))))
+      (insert
+       ;; (make-string offset ?\s)
+       offset
+       " *" (make-string whitespace-and-star-len ?\s))))
 
    ;; Line starts with *.
    ((save-excursion
       (beginning-of-line)
-      (looking-at (rx (group (* " ") (any "*|") (* " ")))))
+      (looking-at (rx (group (* (syntax whitespace)) (any "*|") (* " ")))))
     (let ((prefix (match-string 1)))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
@@ -1061,7 +1066,7 @@ and /* */ comments.  SOFT works the same as in
    ;; default case since (rx (* " ")) matches anything.
    ((save-excursion
       (beginning-of-line)
-      (looking-at (rx (* " "))))
+      (looking-at (rx (* (syntax whitespace)))))
     (let ((whitespaces (match-string 0)))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
@@ -1072,6 +1077,8 @@ and /* */ comments.  SOFT works the same as in
 This is like `c-ts-common-comment-indent-new-line', but handle the
 less common PHP-style # comment.  SOFT works the same as in
 `comment-indent-new-line'."
+  ;; TODO: affertire Yuan che c'è un bug nel codice
+  ;; di (c-ts-common-comment-indent-new-line soft)
   (if (save-excursion
 	;; Line start with # or ## or ###...
 	(beginning-of-line)
@@ -1079,12 +1086,13 @@ less common PHP-style # comment.  SOFT works the same as in
 	 (rx "#" (group (* (any "#")) (* (syntax whitespace))))
 	 (line-end-position)
 	 t nil))
-      (let ((offset (- (match-beginning 0) (line-beginning-position)))	    
+      (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
 	    (comment-prefix (match-string 0)))
-	;; (message "match # comment ")
 	(if soft (insert-and-inherit ?\n) (newline 1))
 	(delete-region (line-beginning-position) (point))
-	(insert (make-string offset ?\s) comment-prefix))
+	(insert
+	 offset
+	 comment-prefix))
     ;; other style of comments
     (php-ts-common-comment-indent-new-line soft)))
 
@@ -1102,13 +1110,14 @@ Derived from `c-ts-common-comment-setup'."
 	      ;; quello che segue è per cercare di sistemare l'indentazione
 	      ;; dei commenti di linea
 	      ;; adaptive-fill-first-line-regexp (purecopy "\\`[ \t]*\\'")))
-	      adaptive-fill-first-line-regexp (rx bos
-						  (seq (* (syntax whitespace))
-						       (or 
-							(group (seq "/" (+ "/")))
-							(group (seq "#" (+ "#"))))
-						       (* (syntax whitespace)))
-						  eos)))
+	      ;; adaptive-fill-first-line-regexp (rx bos
+	      ;; 					  (seq (* (syntax whitespace))
+	      ;; 					       (or 
+	      ;; 						(group (seq "/" (+ "/")))
+	      ;; 						(group (seq "#" (+ "#"))))
+	      ;; 					       (* (syntax whitespace)))
+	      ;; 					  eos)
+	      ))
 
 
 ;;; Modes
