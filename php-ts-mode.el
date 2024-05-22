@@ -1029,12 +1029,12 @@ and /* */ comments.  SOFT works the same as in
        (rx "//" (group (* (any "/!")) (* " ")))
        (line-end-position)
        t nil))
-    (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
+    (let ((offset (- (match-beginning 0) (line-beginning-position)))
 	  (whitespaces (match-string 1)))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
       (insert
-       offset
+       (make-string offset ?\s)
        "//" whitespaces)))
 
    ;; Line starts with /* or /**.
@@ -1044,13 +1044,12 @@ and /* */ comments.  SOFT works the same as in
        (rx "/*" (group (? "*") (* " ")))
        (line-end-position)
        t nil))
-    (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
+    (let ((offset (- (match-beginning 0) (line-beginning-position)))
 	  (whitespace-and-star-len (length (match-string 1))))
       (if soft (insert-and-inherit ?\n) (newline 1))
       (delete-region (line-beginning-position) (point))
       (insert
-       ;; (make-string offset ?\s)
-       offset
+       (make-string offset ?\s)
        " *" (make-string whitespace-and-star-len ?\s))))
 
    ;; Line starts with *.
@@ -1083,15 +1082,15 @@ less common PHP-style # comment.  SOFT works the same as in
 	;; Line start with # or ## or ###...
 	(beginning-of-line)
 	(re-search-forward
-	 (rx "#" (group (* (any "#")) (* (syntax whitespace))))
+	 (rx "#" (group (* (any "#")) (* " ")))
 	 (line-end-position)
 	 t nil))
-      (let ((offset (buffer-substring (line-beginning-position) (match-beginning 0)))
+      (let ((offset (- (match-beginning 0) (line-beginning-position)))
 	    (comment-prefix (match-string 0)))
 	(if soft (insert-and-inherit ?\n) (newline 1))
 	(delete-region (line-beginning-position) (point))
 	(insert
-	 offset
+	 (make-string offset ?\s)
 	 comment-prefix))
     ;; other style of comments
     (php-ts-common-comment-indent-new-line soft)))
