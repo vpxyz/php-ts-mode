@@ -25,7 +25,6 @@
 ;; This package provides `php-ts-mode' which is a major mode
 ;; for editing PHP files with embedded html, javascript, css and phpdoc.
 ;; Tree Sitter is used to parse each of these languages, if parsers are available.
-;; html/javascript/css parsers can be disabled if you don't need them.
 ;;
 ;; This package is compatible with and was tested against those tree-sitter grammars:
 ;; * https://github.com/tree-sitter/tree-sitter-php
@@ -590,10 +589,10 @@ the offset and outside the html at 0"
   "PHP keywords for tree-sitter font-locking.")
 
 (defconst php-ts-mode--operators
-  '("**=" "*=" "/=" "%=" "+=" "-=" ".=" "<<=" ">>=" "&=" "^=" "|="
-    "??"  "??=" "||" "&&" "|" "^" "&" "==" "!=" "<>" "===" "!==" "<"
-    ">" "<=" ">=" "<=>" "<<" ">>" "+" "-" "." "*" "**" "/"
-    "%" "->" "?->")
+  '("--" "**=" "*=" "/=" "%=" "+=" "-=" ".=" "<<=" ">>=" "&=" "^="
+    "|=" "??"  "??=" "||" "&&" "|" "^" "&" "==" "!=" "<>" "===" "!=="
+    "<" ">" "<=" ">=" "<=>" "<<" ">>" "+" "-" "." "*" "**" "/" "%"
+    "->" "?->")
   "PHP operators for tree-sitter font-locking.")
 
 (defconst php-ts-mode--predefined-constant
@@ -636,8 +635,6 @@ the offset and outside the html at 0"
    :language 'php
    :feature 'constant
    `((boolean) @font-lock-constant-face
-     (float) @font-lock-constant-face
-     (integer) @font-lock-constant-face
      (null) @font-lock-constant-face
      ;; predefined constant or built in constant
      ((name) @font-lock-builtin-face
@@ -689,7 +686,9 @@ the offset and outside the html at 0"
 
    :language 'php
    :feature 'literal
-   '((heredoc identifier: (heredoc_start) @font-lock-constant-face)
+   '((integer) @font-lock-number-face
+     (float) @font-lock-number-face
+     (heredoc identifier: (heredoc_start) @font-lock-constant-face)
      (heredoc_body (string_content) @font-lock-string-face)
      (heredoc end_tag: (heredoc_end) @font-lock-constant-face)
      (nowdoc identifier: (heredoc_start) @font-lock-constant-face)
@@ -899,7 +898,7 @@ For NODE, OVERRIDE, START, and END, see
 	 (node-query (format "(%s (%s))" (treesit-node-type parent) node-type)))
     (save-excursion
       (goto-char (treesit-node-start node))
-      (cond    
+      (cond
        ((not (member node-query '("(program (text))"
 				  "(text_interpolation (text))")))
 	'php)
@@ -1110,12 +1109,12 @@ Derived from `c-ts-common-comment-setup'."
 	      ;; dei commenti di linea
 	      ;; adaptive-fill-first-line-regexp (purecopy "\\`[ \t]*\\'")))
 	      ;; adaptive-fill-first-line-regexp (rx bos
-	      ;; 					  (seq (* (syntax whitespace))
-	      ;; 					       (or 
-	      ;; 						(group (seq "/" (+ "/")))
-	      ;; 						(group (seq "#" (+ "#"))))
-	      ;; 					       (* (syntax whitespace)))
-	      ;; 					  eos)
+	      ;;					  (seq (* (syntax whitespace))
+	      ;;					       (or
+	      ;;						(group (seq "/" (+ "/")))
+	      ;;						(group (seq "#" (+ "#"))))
+	      ;;					       (* (syntax whitespace)))
+	      ;;					  eos)
 	      ))
 
 
@@ -1167,10 +1166,10 @@ Derived from `c-ts-common-comment-setup'."
      :help "Move back across one balanced expression"]
     ("Style..."
      ["Set Indentation Style..." php-ts-mode-set-style
-      :help "Set C/C++ indentation style for current buffer"]
-     ["Show Current Indentation Style"(message "Indentation Style: %s"
+      :help "Set PHP indentation style for current buffer"]
+     ["Show Current Style Name"(message "Indentation Style: %s"
 					       php-ts-mode-indent-style)
-      :help "Show the name of the C/C++ indentation style for current buffer"]
+      :help "Show the name of the PHP indentation style for current buffer"]
      ["Set Comment Style" php-ts-mode-set-comment-style
       :help "Choose PHP comment style between block and line comments"])
     "--"
