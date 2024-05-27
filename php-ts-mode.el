@@ -347,7 +347,9 @@ Usefull for debugging."
 ;; taken from c-ts-mode
 (defun php-ts-mode--else-heuristic (node parent bol &rest _)
   "Heuristic matcher for when \"else\" is followed by a closing bracket.
-NODE, PARENT, and BOL are the same as in other matchers."
+NODE, PARENT, and BOL are the same as in other matchers.
+PARENT is NODE's parent, BOL is the beginning of non-whitespace
+characters of the current line."
   (and (null node)
        (save-excursion
 	 (forward-line -1)
@@ -371,7 +373,8 @@ PARENT is its parent."
 
 (defun php-ts-mode--js-css-tag-bol (node parent &rest _)
   "Find the first non-space caracters of html tags <script> or <style>.
-If NODE is null return `line-beginning-position'.  PARENT is ignored."
+If NODE is null return `line-beginning-position'.  PARENT is ignored.
+NODE is the node to match and PARENT is its parent."
   (if (null node)
       (line-beginning-position)
     (save-excursion
@@ -379,13 +382,16 @@ If NODE is null return `line-beginning-position'.  PARENT is ignored."
       (re-search-backward "<script>\\|<style>" nil t))))
 
 (defun php-ts-mode--parent-eol (node parent &rest _)
-  "Find the last non-space caracters of the PARENT of the current NODE."
+  "Find the last non-space caracters of the PARENT of the current NODE.
+NODE is the node to match and PARENT is its parent."
   (save-excursion
     (goto-char (treesit-node-start parent))
     (line-end-position)))
 
 (defun php-ts-mode--parent-html-bol (node parent bol &rest _)
-  "Find the first non-space characters of the html tags before NODE."
+  "Find the first non-space characters of the html tags before NODE.
+PARENT is NODE's parent, BOL is the beginning of non-whitespace
+characters of the current line."
   (save-excursion
     (let ((html-node (treesit-search-forward node "text" t)))
       (if html-node
@@ -418,7 +424,9 @@ the offset and outside the html at 0"
       (treesit-node-start parent))))
 
 (defun php-ts-mode--array-element-heuristic (node parent bol &rest _)
-  "Return of the position of the first element of the array."
+  "Return of the position of the first element of the array.
+PARENT is NODE's parent, BOL is the beginning of non-whitespace
+characters of the current line."
   ;; got to the line where is the parent
   (let ((parent-start
 	 (treesit-node-start parent))
@@ -530,7 +538,7 @@ the offset and outside the html at 0"
 	   ((parent-is "switch_block") parent-bol 0)
 
 	   ;; These rules are for cases where the body is bracketless.
-	   ((query "(do_statement \"while\" @indent)") parent-bol 0)
+	   ((match "while" "do_statement") parent-bol 0)
 	   ((or (parent-is "if_statement")
 		(parent-is "else_clause")
 		(parent-is "for_statement")
@@ -538,7 +546,8 @@ the offset and outside the html at 0"
 		(parent-is "while_statement")
 		(parent-is "do_statement")
 		(parent-is "switch_statement")
-		(parent-is "case_statement"))
+		(parent-is "case_statement")
+		(parent-is "empty_statement"))
 	    parent-bol php-ts-mode-indent-offset))))
     `((psr2
        ((parent-is "program") parent-bol 0)
@@ -1301,7 +1310,8 @@ Derived from `c-ts-common-comment-setup'."
   (setq-local treesit-defun-prefer-top-level t)
 
   ;; Indent.
-  (setq-local indent-tabs-mode nil) ;; for Wordpress will be t
+  (when (eq php-ts-mode-indent-style 'wordpress)
+    (setq-local indent-tabs-mode t))
 
   (setq-local c-ts-common-indent-offset 'php-ts-mode-indent-offset)
   (setq-local treesit-simple-indent-rules (php-ts-mode--get-indent-style))
