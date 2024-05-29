@@ -78,7 +78,7 @@
     (html . ("https://github.com/tree-sitter/tree-sitter-html"  "v0.20.3"))
     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript" "v0.21.2"))
     (css . ("https://github.com/tree-sitter/tree-sitter-css" "v0.21.0")))
-  "Treesitter language parser alist required by `php-ts-mode'.
+  "Treesitter language parsers required by `php-ts-mode'.
 You can customize this variable if you want to stick to a specific
 commit and/or use different parsers.")
 
@@ -205,7 +205,7 @@ The selected style could be one of:
 `Symfony' - use coding styles preferred for working with Symfony projects.
 `Zend' - use coding styles preferred for working with Zend projects.
 
-If one of the supplied styles doesn't suffice a function could be
+If one of the supplied styles doesn't suffice, a function could be
 set instead.  This function is expected return a list that
 follows the form of `treesit-simple-indent-rules'."
   :tag "PHP indent style"
@@ -444,10 +444,14 @@ characters of the current line."
 	(back-to-indentation)
 	(+ (point) php-ts-mode-indent-offset)))))
 
-;; TODO: questa sembra fare la stessa indentica coda di
-;; c-ts-mode--fist-sibling (che però è definita in c-ts-mode e non in c-ts-common
 (defun php-ts-mode--first-sibling-align (node parent bol &rest _)
-  "Return the starting position of the first child of a sibling."
+  "Return the starting position of the first child of a sibling.
+
+If the fist sibling of PARENT and the first child of the sibling are
+on the same line returst the start position of the firt child of the
+sibling, otherwise return the start point of the fist sibling.
+PARENT is NODE's parent, BOL is the beginning of non-whitespace
+characters of the current line."
   (let ((first-sibling-start
 	 (treesit-node-start (treesit-node-child parent 0)))
 	(first-sibling-child-start
@@ -1177,7 +1181,7 @@ Derived from `c-ts-common-comment-setup'."
      ["Set Indentation Style..." php-ts-mode-set-style
       :help "Set PHP indentation style for current buffer"]
      ["Show Current Style Name"(message "Indentation Style: %s"
-					       php-ts-mode-indent-style)
+					php-ts-mode-indent-style)
       :help "Show the name of the PHP indentation style for current buffer"]
      ["Set Comment Style" php-ts-mode-set-comment-style
       :help "Choose PHP comment style between block and line comments"])
@@ -1374,7 +1378,8 @@ Derived from `c-ts-common-comment-setup'."
 
 
 ;;;###autoload
-(defun php-ts-mode-run-php-webserver (port hostname document-root &optional router-script num-of-workers)
+(defun php-ts-mode-run-php-webserver (port hostname document-root
+					   &optional router-script num-of-workers)
   "Run the PHP Built-in web-server on a specified PORT.
 
 `PORT': Port number of built-in web server, default `php-ts-mode-ws-port'.
@@ -1392,25 +1397,21 @@ requires multiple concurrent requests to the built-in webserver.
 When called with \\[universal-argument] it requires `PORT',
 `HOSTNAME', `DOCUMENT-ROOT' and `ROUTER-SCRIPT'."
   ;; (interactive (when current-prefix-arg (php-ts-mode--webserver-read-args)))
-  (interactive (if current-prefix-arg
-		   (php-ts-mode--webserver-read-args)
-		 (list
-		  ;; port
-		  (or
-		   (when (boundp 'port) port)
-		   php-ts-mode-ws-port
-		   (php-ts-mode--webserver-read-args 'port))
-		  ;; hostname
-		  (or
-		   (when (boundp 'hostname) hostname)
-		   php-ts-mode-ws-hostname
-		   (php-ts-mode--webserver-read-args 'hostname))
-		  ;; document-root
-		  (or
-		   (when (boundp 'document-root) document-root)
-		   php-ts-mode-ws-document-root
-		   (php-ts-mode--webserver-read-args 'document-root)))))
-  (let* ((host (format "%s:%d" hostname port))
+  (interactive (when current-prefix-arg
+		 (php-ts-mode--webserver-read-args)))
+  (let* ((port (or
+		port
+		php-ts-mode-ws-port
+		(php-ts-mode--webserver-read-args 'port)))
+	 (hostname (or
+		    hostname
+		    php-ts-mode-ws-hostname
+		    (php-ts-mode--webserver-read-args 'hostname)))
+	 (document-root (or
+			 document-root
+			 php-ts-mode-ws-document-root
+			 (php-ts-mode--webserver-read-args 'document-root)))
+	 (host (format "%s:%d" hostname port))
 	 (name (format "PHP web server on: %s" host))
 	 (buf-name (format "*%s*" name))
 	 (args (delq
@@ -1476,19 +1477,20 @@ Argumens CMD an CONFIG, defaults to `php-ts-mode-php-executable'
 and `php-ts-mode-php-config' respectively, control which PHP interpreter is run.
 If CONFIG is nil the intepreter run with the default php.ini.
 if `php-ts-mode-php-executable' is not defined the user is prompted."
-  (interactive (if current-prefix-arg
-		   (list
-		    (read-string "Run PHP: " php-ts-mode-php-executable)
-		    (expand-file-name (read-file-name "With config: " php-ts-mode-php-config)))
+  (interactive (when current-prefix-arg
 		 (list
-		  (or
-		   (when (boundp 'cmd) cmd)
-		   php-ts-mode-php-executable
-		   (read-string "Run PHP: " php-ts-mode-php-executable))
-		  (or
-		   (when (boundp 'config) config)
-		   (and php-ts-mode-php-config (expand-file-name php-ts-mode-php-config))))))
-  (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer)))
+		  (read-string "Run PHP: " php-ts-mode-php-executable)
+		  (expand-file-name
+		   (read-file-name "With config: " php-ts-mode-php-config)))))
+  (let ((buffer (get-buffer-create php-ts-mode-inferior-buffer))
+	(cmd (or
+	      cmd
+	      php-ts-mode-php-executable
+	      (read-string "Run PHP: " php-ts-mode-php-executable)))
+	(config (or
+		 config
+		 (and php-ts-mode-php-config
+		      (expand-file-name php-ts-mode-php-config)))))
     (unless (comint-check-proc buffer)
       (with-current-buffer buffer
 	(inferior-php-ts-mode-startup cmd config)
