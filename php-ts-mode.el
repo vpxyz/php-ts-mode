@@ -1,11 +1,11 @@
 ;;; php-ts-mode.el --- Major mode for editing PHP files using tree-sitter -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2023-2024 Vincenzo Pupillo
-
-;; Author     : Vincenzo Pupillo <v.pupillo@gmail.com>
-;; Maintainer : Vincenzo Pupillo <v.pupillo@gmail.com>
-;; Created    : September 2023
-;; Keywords   : php language tree-sitter
+;; Author: Vincenzo Pupillo <v.pupillo@gmail.com>
+;; Maintainer: Vincenzo Pupillo <v.pupillo@gmail.com>
+;; Created: September 2023
+;; Keywords: php language tree-sitter
+;; Version: 0.1
 
 ;;  This program is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License as published by
@@ -83,7 +83,8 @@ You can customize this variable if you want to stick to a specific
 commit and/or use different parsers.")
 
 (defun php-ts-mode-install-parsers ()
-  "Install all the required treesitter parser."
+  "Install all the required treesitter parser.
+`php-ts-mode--language-source-alist' define which parsers to install."
   (interactive)
   (let ((treesit-language-source-alist php-ts-mode--language-source-alist))
     (dolist (item php-ts-mode--language-source-alist)
@@ -780,8 +781,9 @@ characters of the current line."
    :language 'php
    :feature 'escape-sequence
    :override t
-   '((heredoc_body (escape_sequence) @font-lock-escape-face)
-     (encapsed_string (escape_sequence) @font-lock-escape-face))
+   '((string (escape_sequence) @font-lock-escape-face)
+     (encapsed_string (escape_sequence) @font-lock-escape-face)
+     (heredoc_body (escape_sequence) @font-lock-escape-face))
 
    :language 'php
    :feature 'base-clause
@@ -1016,80 +1018,11 @@ Ie, NODE is not nested."
 
 ;;; Filling
 
-(defun php-ts-common-comment-indent-new-line (&optional soft)
-  "Break line at point and indent, continuing comment if within one.
-
-This is like `comment-indent-new-line', but specialized for C-style //
-and /* */ comments.  SOFT works the same as in
-`comment-indent-new-line'."
-  ;; I want to experiment with explicitly listing out all each cases and
-  ;; handle them separately, as opposed to fiddling with `comment-start'
-  ;; and friends.  This will have more duplicate code and will be less
-  ;; generic, but in the same time might save us from writting cryptic
-  ;; code to handle all sorts of edge cases.
-  ;;
-  ;; For this command, let's try to make it basic: if the current line
-  ;; is a // comment, insert a newline and a // prefix; if the current
-  ;; line is in a /* comment, insert a newline and a * prefix.  No
-  ;; auto-fill or other smart features.
-  (cond
-   ;; Line starts with //, or ///, or ////...
-   ;; Or //! (used in rust).
-   ((save-excursion
-      (beginning-of-line)
-      (re-search-forward
-       (rx "//" (group (* (any "/!")) (* " ")))
-       (line-end-position)
-       t nil))
-    (let ((offset (- (match-beginning 0) (line-beginning-position)))
-	  (whitespaces (match-string 1)))
-      (if soft (insert-and-inherit ?\n) (newline 1))
-      (delete-region (line-beginning-position) (point))
-      (insert
-       (make-string offset ?\s)
-       "//" whitespaces)))
-
-   ;; Line starts with /* or /**.
-   ((save-excursion
-      (beginning-of-line)
-      (re-search-forward
-       (rx "/*" (group (? "*") (* " ")))
-       (line-end-position)
-       t nil))
-    (let ((offset (- (match-beginning 0) (line-beginning-position)))
-	  (whitespace-and-star-len (length (match-string 1))))
-      (if soft (insert-and-inherit ?\n) (newline 1))
-      (delete-region (line-beginning-position) (point))
-      (insert
-       (make-string offset ?\s)
-       " *" (make-string whitespace-and-star-len ?\s))))
-
-   ;; Line starts with *.
-   ((save-excursion
-      (beginning-of-line)
-      (looking-at (rx (group (* (syntax whitespace)) (any "*|") (* " ")))))
-    (let ((prefix (match-string 1)))
-      (if soft (insert-and-inherit ?\n) (newline 1))
-      (delete-region (line-beginning-position) (point))
-      (insert prefix)))
-
-   ;; Line starts with whitespaces or no space.  This is basically the
-   ;; default case since (rx (* " ")) matches anything.
-   ((save-excursion
-      (beginning-of-line)
-      (looking-at (rx (* (syntax whitespace)))))
-    (let ((whitespaces (match-string 0)))
-      (if soft (insert-and-inherit ?\n) (newline 1))
-      (delete-region (line-beginning-position) (point))
-      (insert whitespaces)))))
-
 (defun php-ts-mode--comment-indent-new-line (&optional soft)
   "Break line at point and indent, continuing comment if within one.
 This is like `c-ts-common-comment-indent-new-line', but handle the
 less common PHP-style # comment.  SOFT works the same as in
 `comment-indent-new-line'."
-  ;; TODO: affertire Yuan che c'è un bug nel codice
-  ;; di (c-ts-common-comment-indent-new-line soft)
   (if (save-excursion
 	;; Line start with # or ## or ###...
 	(beginning-of-line)
@@ -1105,7 +1038,7 @@ less common PHP-style # comment.  SOFT works the same as in
 	 (make-string offset ?\s)
 	 comment-prefix))
     ;; other style of comments
-    (php-ts-common-comment-indent-new-line soft)))
+    (c-ts-common-comment-indent-new-line soft)))
 
 (defun php-ts-mode-comment-setup ()
   "Set up local variables for PHP comment.
@@ -1117,18 +1050,7 @@ Derived from `c-ts-common-comment-setup'."
 	      comment-start-skip (rx (or (seq "#" (not (any "[")))
 					 (seq "/" (+ "/"))
 					 (seq "/" (+ "*")))
-				     (* (syntax whitespace)))
-	      ;; quello che segue è per cercare di sistemare l'indentazione
-	      ;; dei commenti di linea
-	      ;; adaptive-fill-first-line-regexp (purecopy "\\`[ \t]*\\'")))
-	      ;; adaptive-fill-first-line-regexp (rx bos
-	      ;;					  (seq (* (syntax whitespace))
-	      ;;					       (or
-	      ;;						(group (seq "/" (+ "/")))
-	      ;;						(group (seq "#" (+ "#"))))
-	      ;;					       (* (syntax whitespace)))
-	      ;;					  eos)
-	      ))
+				     (* (syntax whitespace)))))
 
 
 ;;; Modes
@@ -1471,8 +1393,7 @@ otherwise it requires all of them."
 
 ;;;###autoload
 (defun run-php (&optional cmd config)
-  "Runs a PHP interpreter as a subprocess of Emacs, with PHP
-I/O through an Emacs buffer.
+  "Run a PHP interpreter as a subprocess of Emacs.
 Argumens CMD an CONFIG, defaults to `php-ts-mode-php-executable'
 and `php-ts-mode-php-config' respectively, control which PHP interpreter is run.
 If CONFIG is nil the intepreter run with the default php.ini.
@@ -1553,13 +1474,15 @@ if `php-ts-mode-php-executable' is not defined the user is prompted."
 (defun php-ts-mode-send-region (beg end)
   "Send region between BEG and END to the inferior PHP process."
   (interactive "r")
-  (when (buffer-live-p php-ts-mode--inferior-php-process)
-    (php-ts-mode-show-process-buffer)
-    (comint-send-string php-ts-mode--inferior-php-process "\n")
-    (comint-send-string
-     php-ts-mode--inferior-php-process
-     (buffer-substring-no-properties beg end))
-    (comint-send-string php-ts-mode--inferior-php-process "\n")))
+  (if (buffer-live-p php-ts-mode--inferior-php-process)
+      (progn
+	(php-ts-mode-show-process-buffer)
+	(comint-send-string php-ts-mode--inferior-php-process "\n")
+	(comint-send-string
+	 php-ts-mode--inferior-php-process
+	 (buffer-substring-no-properties beg end))
+	(comint-send-string php-ts-mode--inferior-php-process "\n"))
+    (message "Invoke run-php first!")))
 
 (defun php-ts-mode-send-buffer ()
   "Send current buffer to the inferior PHP process."
