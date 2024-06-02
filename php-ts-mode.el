@@ -766,7 +766,7 @@ characters of the current line."
    :feature  'function-call
    :override t
    '((function_call_expression
-      function: (_) @font-lock-function-call-face)
+      function: (name) @font-lock-function-call-face)
      (scoped_call_expression
       name: (_) @font-lock-function-name-face)
      (member_call_expression
