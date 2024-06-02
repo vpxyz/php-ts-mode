@@ -522,9 +522,10 @@ characters of the current line."
 
 	   ;; Closing bracket. Must stay here, the rule order matter.
 	   ((node-is "}") standalone-parent 0)
-	   ;;((parent-is "declaration_list") parent-bol php-ts-mode-indent-offset)
+	   ;; handle multiple single line comment that start at the and of a line
+	   ((match "comment" "declaration_list") c-ts-mode--anchor-prev-sibling 0)
 	   ((parent-is "declaration_list") column-0 php-ts-mode-indent-offset)
-	   ;;((parent-is "attribute") parent-bol 0)
+
 	   ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
 
 	   ;; Statement in {} blocks.
