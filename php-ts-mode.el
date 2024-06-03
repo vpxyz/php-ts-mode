@@ -1295,7 +1295,7 @@ Derived from `c-ts-common-comment-setup'."
   (setq-local align-indent-before-aligning t)
 
   ;; should be the last one
-  (setq-local php-ts-parser (treesit-parser-create 'php))
+  (setq-local treesit-primary-parser (treesit-parser-create 'php))
   (treesit-font-lock-recompute-features)
   (treesit-major-mode-setup))
 
