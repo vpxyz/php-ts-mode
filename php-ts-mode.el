@@ -464,6 +464,31 @@ characters of the current line."
 	first-sibling-child-start
       first-sibling-start)))
 
+;; adapted from c-ts-mode--anchor-prev-sibling
+(defun php-ts-mode--anchor-prev-sibling (node parent bol &rest _)
+  "Return the start of the previous named sibling of NODE.
+
+Return nil if a) there is no prev-sibling, or b) prev-sibling
+doesn't have a child.
+
+PARENT is NODE's parent, BOL is the beginning of non-whitespace
+characters of the current line."
+  (when-let ((prev-sibling
+              (or (treesit-node-prev-sibling node t)
+                  (treesit-node-prev-sibling
+                   (treesit-node-first-child-for-pos parent bol) t)
+                  (treesit-node-child parent -1 t)))
+             (continue t))
+    (save-excursion
+      (while (and prev-sibling continue)
+        (goto-char (treesit-node-start prev-sibling))
+        (if (looking-back (rx bol (* whitespace))
+                          (line-beginning-position))
+            (setq continue nil)
+          (setq prev-sibling
+                (treesit-node-prev-sibling prev-sibling)))))
+    (treesit-node-start prev-sibling)))
+
 ;; TODO: prova a vedere come viene usata c-ts-common-statement-offset
 ;; in java-ts-mode
 
@@ -523,7 +548,7 @@ characters of the current line."
 	   ;; Closing bracket. Must stay here, the rule order matter.
 	   ((node-is "}") standalone-parent 0)
 	   ;; handle multiple single line comment that start at the and of a line
-	   ((match "comment" "declaration_list") c-ts-mode--anchor-prev-sibling 0)
+	   ((match "comment" "declaration_list") php-ts-mode--anchor-prev-sibling 0)
 	   ((parent-is "declaration_list") column-0 php-ts-mode-indent-offset)
 
 	   ((parent-is "initializer_list") parent-bol php-ts-mode-indent-offset)
