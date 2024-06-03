@@ -445,12 +445,12 @@ characters of the current line."
 	(back-to-indentation)
 	(+ (point) php-ts-mode-indent-offset)))))
 
-(defun php-ts-mode--first-sibling-align (node parent bol &rest _)
-  "Return the starting position of the first child of a sibling.
+(defun php-ts-mode--anchor-first-sibling (node parent bol &rest _)
+  "Return the start of the first child of a sibling of PARENT.
 
 If the fist sibling of PARENT and the first child of the sibling are
-on the same line returst the start position of the firt child of the
-sibling, otherwise return the start point of the fist sibling.
+on the same line return the start position of the firt child of the
+sibling. Otherwise return the start of the fist sibling.
 PARENT is NODE's parent, BOL is the beginning of non-whitespace
 characters of the current line."
   (let ((first-sibling-start
@@ -608,7 +608,7 @@ characters of the current line."
        ((parent-is "text_interpolation") php-ts-mode--parent-html-bol 0)
        ,@common)
       (zend
-       ((parent-is "class_interface_clause") php-ts-mode--first-sibling-align 0)
+       ((parent-is "class_interface_clause") php-ts-mode--anchor-first-sibling 0)
        ((parent-is "function_call_expression") first-sibling 0)
        ((parent-is "array_creation_expression") php-ts-mode--array-element-heuristic 0)
        ,@common))))
