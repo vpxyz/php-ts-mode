@@ -39,6 +39,7 @@
 ;; * IMenu
 ;; * Navigation
 ;; * Which-function
+;; * Flymake
 ;; * Tree-sitter parser installation helper
 ;; * PHP built-in server support
 ;; * Shell interaction: execute PHP code in a inferior PHP process
@@ -55,7 +56,8 @@
 (eval-when-compile
   (require 'cl-lib)
   (require 'rx)
-  (require 'subr-x))
+  (require 'subr-x)
+  (require 'flymake))
 
 (declare-function treesit-node-child "treesit.c")
 (declare-function treesit-node-child-by-field-name "treesit.c")
@@ -220,6 +222,73 @@ follows the form of `treesit-simple-indent-rules'."
 		 (function :tag "A function for user customized style" ignore))
   :set #'php-ts-mode--indent-style-setter
   :safe 'c-ts-indent-style-safep)
+
+
+;;; Flymake integration
+
+;; based on lua-ts-mode
+(defvar-local php-ts-mode--flymake-process nil
+  "Store the Flymake process.")
+
+(defun php-ts-mode--flymake-parse-diagnostics (locus source)
+  "Parse the output php syntax check command in SOURCE buffer.
+LOCUS is a buffer object or a string designating a file name.")
+
+;; TODO: add phpmd and phpcs
+(defun php-ts-mode-flymake-php (report-fn &rest _args)
+  "PHP backend for Flymake.
+Calls REPORT-FN directly."
+  (when (process-live-p php-ts-mode--flymake-process)
+    (kill-process php-ts-mode--flymake-process))
+  (let ((source (current-buffer))
+	(diagnostics-pattern (eval-when-compile
+			       (rx bol (? "PHP ") ;; every dignostic line start with PHP
+				   (group (or "Fatal" "Parse")) ;; 1: type
+				   " error:" (+ (syntax whitespace))
+				   (group (+? any)) ;; 2: msg
+				   " in " (group (+? any)) ;; 3: file
+				   " on line " (group (+ num)) ;; 4: line
+				   eol))))
+    (save-restriction
+      (widen)
+      (setq php-ts-mode--flymake-process
+            (make-process
+             :name "php-ts-mode-flymake"
+             :noquery t
+             :connection-type 'pipe
+             :buffer (generate-new-buffer " *php-ts-mode-flymake*")
+             :command `(,php-ts-mode-php-executable
+                        "-l" "-d" "display_errors=0")
+             :sentinel
+	     (lambda (proc _event)
+	       (when (eq 'exit (process-status proc))
+		 (unwind-protect
+		     (if (with-current-buffer source
+                           (eq proc php-ts-mode--flymake-process))
+                         (with-current-buffer (process-buffer proc)
+                           (goto-char (point-min))
+			   (let (diags)
+			     (while (search-forward-regexp
+				     diagnostics-pattern
+				     nil t)
+			       (let* ((beg
+				       (car (flymake-diag-region
+					     source
+					     (string-to-number (match-string 4)))))
+				      (end
+				       (cdr (flymake-diag-region
+					     source
+					     (string-to-number (match-string 4)))))
+				      (msg (match-string 2))
+				      (type :error))
+				 (push (flymake-make-diagnostic
+					source beg end type msg)
+				       diags)))
+			     (funcall report-fn diags)))
+		       (flymake-log :warning "Canceling obsolete check %s" proc))
+		   (kill-buffer (process-buffer proc)))))))
+      (process-send-region php-ts-mode--flymake-process (point-min) (point-max))
+      (process-send-eof php-ts-mode--flymake-process))))
 
 
 ;;; Utils
@@ -450,7 +519,7 @@ characters of the current line."
 
 If the fist sibling of PARENT and the first child of the sibling are
 on the same line return the start position of the firt child of the
-sibling. Otherwise return the start of the fist sibling.
+sibling. Otherwise return the start of the first sibling.
 PARENT is NODE's parent, BOL is the beginning of non-whitespace
 characters of the current line."
   (let ((first-sibling-start
@@ -1322,7 +1391,8 @@ Derived from `c-ts-common-comment-setup'."
   ;; should be the last one
   (setq-local treesit-primary-parser (treesit-parser-create 'php))
   (treesit-font-lock-recompute-features)
-  (treesit-major-mode-setup))
+  (treesit-major-mode-setup)
+  (add-hook 'flymake-diagnostic-functions #'php-ts-mode-flymake-php nil 'local))
 
 
 ;;;###autoload
